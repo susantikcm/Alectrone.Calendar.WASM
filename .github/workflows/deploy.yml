@@ -31,14 +31,10 @@ jobs:
       - name: Publish Blazor WebAssembly app
         run: dotnet publish -c Release -o ./publish
 
-      # Project Pages serve the site from /<repo-name>/, so the base href must
-      # match. Local dev keeps "/" (see wwwroot/index.html); the deployed copy
-      # is rewritten here.
-      - name: Set base href to repository subpath
-        run: |
-          repo='${{ github.event.repository.name }}'
-          sed -i "s|<base href=\"/\" />|<base href=\"/$repo/\" />|" ./publish/wwwroot/index.html
-
+      # Custom domain (cal.alectrone.com) means the app is served from the
+      # domain root, so wwwroot/index.html already has <base href="/" /> and no
+      # rewriting is needed. wwwroot/CNAME is published as-is by dotnet publish.
+      #
       # GitHub Pages serves 404.html for unknown paths. A copy of index.html
       # lets the Blazor client router handle deep links (SPA fallback).
       - name: Add SPA fallback (404.html)
