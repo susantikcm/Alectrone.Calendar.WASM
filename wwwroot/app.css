@@ -1,0 +1,138 @@
+/* ── Alectrone.Calendar.WASM (demo host) ─────────────────────────────────
+   Host-level rules only. Every landing style lives in the page's scoped
+   CSS (Components/Pages/Home.razor.css), copied verbatim from
+   Alectrone.Calendar.Web's LandingPage.razor.css.
+
+   The landing CSS was authored on top of Alectrone.Theme's reset and base
+   layers (ux-alectrone.css). Those two layers are reproduced below so the
+   demo lays out identically without shipping the whole 74 KB theme bundle,
+   which a page with no Alectrone controls on it would never use. They stay
+   inside @layer, exactly as the theme does, so the page's own (unlayered)
+   scoped CSS always wins.
+   ────────────────────────────────────────────────────────────────────── */
+
+@layer reset, base;
+
+@layer reset {
+    *, *:before, *:after { box-sizing: border-box; }
+    * { margin: 0; }
+    html, body { min-height: 100%; }
+    body { line-height: 1.5; -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility; }
+    body, h1, h2, h3, h4, h5, h6, p, figure, blockquote, dl, dd { margin: 0; }
+    img, picture, video, canvas, svg { display: block; max-width: 100%; }
+    input, button, textarea, select { font: inherit; color: inherit; }
+    textarea { resize: vertical; }
+    a { text-decoration: none; color: inherit; }
+    ul[role=list], ol[role=list] { list-style: none; padding: 0; }
+    button { cursor: pointer; }
+    :where(*)::selection { color: #fff; background: hsl(268, 62%, 58%); }
+}
+
+@layer base {
+    :root { font-family: var(--font-family-sans, 'Inter', 'Segoe UI', system-ui, sans-serif); }
+
+    body {
+        font-family: var(--font-family-sans, 'Inter', 'Segoe UI', system-ui, sans-serif);
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+        font-family: var(--font-family-display, var(--font-family-sans, 'Inter', 'Segoe UI', system-ui, sans-serif));
+        font-weight: 600;
+        line-height: 1.2;
+        letter-spacing: -0.01em;
+    }
+
+    h1 { font-size: clamp(2.25rem, 2vw + 1.5rem, 3rem); }
+    h2 { font-size: clamp(1.875rem, 1.5vw + 1.25rem, 2.5rem); }
+    h3 { font-size: clamp(1.5rem, 1vw + 1.125rem, 2rem); }
+    h4 { font-size: 1.25rem; }
+    h5 { font-size: 1.125rem; }
+    h6 { font-size: 1rem; }
+    strong { font-weight: 600; }
+    a { text-decoration: none; transition: color 200ms ease; }
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+/* The landing owns a dark surface; declare it on the document so there is no
+   light flash before the WebAssembly runtime paints the page, and so the
+   native scrollbar and form controls read dark. */
+body {
+    background: hsl(268, 30%, 6%);
+    color-scheme: dark;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* ── Landing: hold/stop at each section ──────────────────────────────────
+   The landing scrolls the DOCUMENT (its engine drives window scroll), so the
+   scroll-snap container is the root element. The per-section snap targets and
+   the sticky-header offset live in the page's scoped CSS. Proximity (not
+   mandatory) so the tall pinned scenes still scrub through. Stood down under
+   reduced motion, both by media query and by the engine's .is-reduced class.
+   ────────────────────────────────────────────────────────────────────── */
+html:has(#calendar-landing) {
+    scroll-snap-type: y proximity;
+}
+@media (prefers-reduced-motion: reduce) {
+    html:has(#calendar-landing) { scroll-snap-type: none; }
+}
+html:has(#calendar-landing.is-reduced) {
+    scroll-snap-type: none;
+}
+
+/* ── Boot splash: the plasma mark, breathing, until the runtime is up ── */
+.boot {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 18px;
+    color: hsl(268, 10%, 60%);
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.boot__mark {
+    width: 56px;
+    height: 56px;
+    animation: boot-breathe 2.4s ease-in-out infinite;
+}
+
+@keyframes boot-breathe {
+    0%, 100% { opacity: 0.55; transform: scale(0.94); }
+    50%      { opacity: 1;    transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .boot__mark { animation: none; opacity: 1; }
+}
+
+/* ── Blazor error / reconnect chrome ── */
+#blazor-error-ui {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    padding: 12px 20px;
+    background: hsl(0, 60%, 22%);
+    color: hsl(0, 20%, 96%);
+    font-size: 0.9rem;
+    box-shadow: 0 -2px 20px hsla(0, 0%, 0%, 0.5);
+}
+
+#blazor-error-ui .reload,
+#blazor-error-ui .dismiss {
+    color: inherit;
+    margin-left: 12px;
+    cursor: pointer;
+}

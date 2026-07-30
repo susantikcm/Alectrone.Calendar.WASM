@@ -1,0 +1,1052 @@
+@page "/"
+@using System.Globalization
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>Alectrone Calendar &middot; Scheduling for Teams</PageTitle>
+
+<HeadContent>
+    <meta name="description" content="Alectrone Calendar puts team scheduling, public booking pages, and an AI assistant on one calendar. Seven views, field-level encryption, role-scoped permissions." />
+    <meta property="og:title" content="Alectrone Calendar &middot; Scheduling for Teams" />
+    <meta property="og:description" content="Team scheduling, public booking pages, and an AI assistant on one calendar." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Alectrone Calendar" />
+    <meta name="twitter:card" content="summary" />
+</HeadContent>
+
+@*
+    WASM DEMO of the Alectrone.Calendar.Web landing page. Markup, scoped CSS
+    (Home.razor.css), and the scene engine (wwwroot/js/landing-scenes.js) are
+    ported verbatim from Components/Pages/LandingPage.razor in that host, with
+    two deliberate removals for this demo:
+
+      - no sign-in / sign-up chrome (header auth buttons, the compact-bar
+        sign-in link, and every /Account/* CTA and footer link), and
+      - no pricing details (the plan grid, the Enterprise band, the pricing
+        rail stop, and the pricing nav / footer links).
+
+    Where the original CTA carried the visual weight of a scene, the button is
+    kept and repointed at the in-page chapter it introduces, so the composition
+    (and its motion choreography) is unchanged.
+
+    Original structure and choreography follow the Marketing Motion Design
+    handbook (docs-content/Developers/MarketingPageMotionDesign.md): hook,
+    chapter statement, pose-morph demonstration, horizontal views film,
+    trip-wire performances, pinned proof, close.
+
+    Unlike the Blazor Server host (where "/" is static SSR and the engine is
+    armed by a JS initializer), this page is interactive from first render, so
+    it imports and drives the engine itself. Motion stays progressive
+    enhancement: the engine only flips state classes and publishes CSS custom
+    properties; the scoped CSS performs every transition, and its base pose is
+    the composed final frame.
+*@
+
+<div id="calendar-landing" class="landing">
+
+    @* ── Top Nav (T11: quiet chrome, elevation flips with hysteresis).
+         Mobile: base CSS keeps the anchors as an in-flow second row (works
+         with JS off and under reduced motion); the engine upgrades it to a
+         toggle-driven panel (.nav-open) when motion is armed. ── *@
+    <header class="landing__header">
+        <div class="landing__header-inner">
+            <a href="/" class="landing__brand">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" aria-hidden="true">
+                    <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
+                    <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
+                    <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
+                </svg>
+                <span>Alectrone Calendar</span>
+            </a>
+
+            <nav id="landing-nav" class="landing__nav" aria-label="Marketing navigation">
+                <a href="#schedule">Product</a>
+                <a href="#views">Views</a>
+                <a href="#booking">Booking</a>
+                <a href="#colorways">Colorways</a>
+            </nav>
+
+            @* The auth buttons are gone in the demo; the container stays because
+               it carries `margin-left: auto` (it keeps the nav left-aligned
+               after the brand) and it hosts the mobile nav toggle. *@
+            <div class="landing__auth-actions">
+                <button type="button" class="landing__nav-toggle" aria-label="Menu"
+                        aria-expanded="false" aria-controls="landing-nav">
+                    <span class="landing__nav-toggle-bar"></span>
+                    <span class="landing__nav-toggle-bar"></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    @* ── Chapter spine (T18): appears after the hero, tracks the chapter in view ── *@
+    <nav class="landing-rail" aria-label="Page chapters">
+        <div class="landing-rail__inner">
+            <button type="button" class="landing-rail__link" data-rail="schedule"><span class="landing-rail__dot"></span><span class="landing-rail__label">Schedule</span></button>
+            <button type="button" class="landing-rail__link" data-rail="views"><span class="landing-rail__dot"></span><span class="landing-rail__label">Views</span></button>
+            <button type="button" class="landing-rail__link" data-rail="booking"><span class="landing-rail__dot"></span><span class="landing-rail__label">Booking</span></button>
+            <button type="button" class="landing-rail__link" data-rail="colorways"><span class="landing-rail__dot"></span><span class="landing-rail__label">Colorways</span></button>
+            <button type="button" class="landing-rail__link" data-rail="ai"><span class="landing-rail__dot"></span><span class="landing-rail__label">AI</span></button>
+            <button type="button" class="landing-rail__link" data-rail="proof"><span class="landing-rail__dot"></span><span class="landing-rail__label">Proof</span></button>
+        </div>
+    </nav>
+
+    @* ══ Scene 1 · Hook: a T15-style overture on a sticky runway. Entrance
+         choreography and pointer parallax (T1), then a scrubbed film on
+         --exit: the supporting copy recedes, the title shrinks and rises
+         away, and the statement grows from a subtitle into the display
+         line, fills, holds, and hands focus to its second line before the
+         stage departs (T14). Scrolling up replays it in reverse. Base,
+         mobile, and reduced motion keep the single-viewport composition. ══ *@
+    <section class="landing-hero" data-hero data-scene>
+      <div class="landing-hero__stage">
+        <div class="landing-hero__backdrop" aria-hidden="true">
+            <span class="landing-aurora landing-aurora--violet" data-depth="90"></span>
+            <span class="landing-aurora landing-aurora--indigo" data-depth="55"></span>
+            <span class="landing-aurora landing-aurora--orchid" data-depth="30"></span>
+            <span class="landing-hero__gridsheet" data-depth="14"></span>
+        </div>
+
+        @* Editorial split: the copy holds the left column and the crafted week
+           calendar the right. The copy's scroll overture is transform-driven,
+           so it plays here on the left exactly as it did centred; the two
+           columns never overlap, so no scrim is needed. *@
+        <div class="landing-hero__layout">
+            <div class="landing-hero__inner">
+                <p class="landing-eyebrow landing-hero__e1">Alectrone Calendar</p>
+                <h1 class="landing-hero__title landing-hero__e2">
+                    Own the <span class="landing-accent">week.</span>
+                </h1>
+                @* The chapter statement lives under the title: a subtitle at
+                   rest, it grows into the display line as the visitor scrolls
+                   (two-beat fill + line handoff ride the same scrub). *@
+                <h2 class="landing-hero__statement landing-hero__e2b">
+                    <span class="landing-hero__statement-line landing-hero__statement-line--1">Stop arranging time.</span>
+                    <span class="landing-hero__statement-line landing-hero__statement-line--2">Start directing it.</span>
+                </h2>
+                <p class="landing-hero__lede landing-hero__e3">
+                    Calendar, bookings, and availability: one place where your
+                    team's time comes together. Seven ways to see the week, one
+                    link to get booked, and an assistant that turns plain words
+                    into events.
+                </p>
+                <div class="landing-hero__cta-row landing-hero__e4">
+                    <a href="#schedule" class="landing__btn landing__btn--primary landing__btn--lg">
+                        See it move
+                    </a>
+                    <a href="#views" class="landing__btn landing__btn--outline landing__btn--lg">
+                        Every view
+                    </a>
+                </div>
+            </div>
+
+            @* Concept A, elevated: the week orbits a PRECISE TIME DIAL at the
+               centre, in true perspective, over deep-space atmosphere. The dial
+               is watch-grade linework (fine ticks, real-time hands, one iris
+               accent, an iris sweep hand) rather than a glowing orb; each day
+               swells and sharpens as it sweeps to the near edge of the tilted
+               plane and recedes small and soft around the far side. The wrapper
+               owns perspective + the JS parallax transform; the inner plane owns
+               the rake, entrance, and --exit recede. Hidden from assistive tech. *@
+            <div class="landing-hero__sun" data-depth="30" aria-hidden="true">
+                <div class="landing-hsun">
+                    <span class="landing-hsun__space"></span>
+                    <span class="landing-hsun__nebula"></span>
+                    <span class="landing-hsun__corona"></span>
+                    <span class="landing-hsun__path landing-hsun__path--outer"></span>
+                    <span class="landing-hsun__path landing-hsun__path--inner"></span>
+                    <div class="landing-hsun__orbit">
+                        @{
+                            var sunDays = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
+                            var sunToday = ((int)_today.DayOfWeek + 6) % 7;
+                        }
+                        @for (var i = 0; i < 7; i++)
+                        {
+                            var a = (i * (360.0 / 7.0)).ToString("0.###", Inv);
+                            var c = _dotPalette[i % _dotPalette.Length];
+                            <span class="landing-hsun__day@(i == sunToday ? " landing-hsun__day--on" : null)" style="--a:@(a)deg;--i:@i;--c:@c">
+                                <span class="landing-hsun__body">
+                                    <span class="landing-hsun__depth">
+                                        <span class="landing-hsun__dot"></span>
+                                        <span class="landing-hsun__label">@sunDays[i]</span>
+                                    </span>
+                                </span>
+                            </span>
+                        }
+                    </div>
+                    <span class="landing-hsun__core">
+                        <span class="landing-hsun__dial">
+                            <svg class="landing-hsun__clock" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:100%" aria-hidden="true" focusable="false">
+                                @* Minute ticks with brighter hour ticks; 12 o'clock is the one iris accent. *@
+                                @for (var m = 0; m < 60; m++)
+                                {
+                                    var isHour = m % 5 == 0;
+                                    var tang = (m * 6).ToString(Inv);
+                                    var y2 = isHour ? "15" : "11.5";
+                                    var stroke = m == 0
+                                        ? "hsl(268, 70%, 66%)"
+                                        : (isHour ? "hsla(268, 18%, 90%, 0.5)" : "hsla(268, 14%, 84%, 0.22)");
+                                    var sw = isHour ? "1.1" : "0.7";
+                                    <line x1="60" y1="9" x2="60" y2="@y2" transform="rotate(@tang 60 60)" stroke="@stroke" stroke-width="@sw" stroke-linecap="round" />
+                                }
+                                @* Hands at the real current time (client clock; decorative). *@
+                                <line x1="60" y1="62.5" x2="60" y2="35" transform="rotate(@_clockHour 60 60)" stroke="hsla(268, 12%, 92%, 0.9)" stroke-width="2.4" stroke-linecap="round" />
+                                <line x1="60" y1="63.5" x2="60" y2="21" transform="rotate(@_clockMin 60 60)" stroke="hsla(268, 10%, 96%, 0.96)" stroke-width="1.6" stroke-linecap="round" />
+                                <circle cx="60" cy="60" r="2.6" fill="hsl(268, 24%, 90%)" />
+                                <circle cx="60" cy="60" r="1.1" fill="hsl(268, 62%, 52%)" />
+                            </svg>
+                        </span>
+                        <span class="landing-hsun__now"></span>
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="landing-hero__cue landing-hero__e5" aria-hidden="true">
+            <span class="landing-hero__cue-dot"></span>
+        </div>
+      </div>
+    </section>
+
+    @* ══ Scene 3 · SCHEDULE: sticky-runway pose morph (T12). Pose 1: your
+         solo week as an inset rounded card. One flick: the SAME calendar
+         swells to full bleed and the team layer fades in. Widening the frame
+         IS the pitch: your calendar grows into the team's canvas. The flip
+         commits at 60% progress going down, 20% going up; the gap between
+         them is the hysteresis dead zone. ══ *@
+    <section id="schedule" class="landing-week" data-pose data-chapter="schedule" aria-label="Team scheduling">
+        <div class="landing-week__stage">
+            <div class="landing-week__dawn" aria-hidden="true"></div>
+
+            <div class="landing-week__media" aria-hidden="true">
+                <div class="landing-week__app">
+                    <div class="landing-week__appbar">
+                        <span class="landing-week__mark">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16">
+                                <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
+                                <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
+                                <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
+                            </svg>
+                        </span>
+                        <span class="landing-week__month">@_monthLabel</span>
+                        <span class="landing-week__avatars">
+                            <span class="landing-week__avatar" style="--c:hsl(220, 70%, 58%)">MC</span>
+                            <span class="landing-week__avatar" style="--c:hsl(38, 80%, 55%)">JR</span>
+                            <span class="landing-week__avatar" style="--c:hsl(160, 60%, 45%)">AL</span>
+                            <span class="landing-week__avatar landing-week__avatar--more">+3</span>
+                        </span>
+                    </div>
+                    <div class="landing-week__grid">
+                        <span class="landing-week__now" style="--t:36"></span>
+                        <div class="landing-week__col">
+                            <span class="landing-week__day">Mon</span>
+                            <span class="landing-week__ev" style="--c:hsl(268, 60%, 58%);--t:16;--h:22">
+                                <span class="landing-week__ev-title">Design review</span>
+                                <span class="landing-week__ev-time">9:00 - 10:30</span>
+                            </span>
+                            <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(220, 70%, 58%);--t:52;--h:16">
+                                <span class="landing-week__ev-title">Standup</span>
+                                <span class="landing-week__ev-time">13:00 &#183; 15 min</span>
+                            </span>
+                        </div>
+                        <div class="landing-week__col">
+                            <span class="landing-week__day">Tue</span>
+                            <span class="landing-week__ev" style="--c:hsl(220, 70%, 58%);--t:8;--h:26">
+                                <span class="landing-week__ev-title">Deep work</span>
+                                <span class="landing-week__ev-time">8:00 - 11:00</span>
+                                <span class="landing-week__ev-meta">Focus block</span>
+                            </span>
+                            <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(160, 60%, 45%);--t:44;--h:28">
+                                <span class="landing-week__ev-title">Sprint planning</span>
+                                <span class="landing-week__ev-time">11:30 - 13:00</span>
+                                <span class="landing-week__ev-people">
+                                    <span style="--c:hsl(220, 70%, 58%)"></span>
+                                    <span style="--c:hsl(38, 80%, 55%)"></span>
+                                    <span style="--c:hsl(268, 60%, 58%)"></span>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="landing-week__col">
+                            <span class="landing-week__day">Wed</span>
+                            <span class="landing-week__ev" style="--c:hsl(160, 60%, 45%);--t:30;--h:16">
+                                <span class="landing-week__ev-title">1:1 with Sam</span>
+                                <span class="landing-week__ev-time">10:30</span>
+                            </span>
+                            <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(38, 80%, 55%);--t:56;--h:22">
+                                <span class="landing-week__ev-title">Design crit</span>
+                                <span class="landing-week__ev-time">14:30 - 15:30</span>
+                                <span class="landing-week__ev-meta">Room 4</span>
+                            </span>
+                        </div>
+                        <div class="landing-week__col">
+                            <span class="landing-week__day">Thu</span>
+                            <span class="landing-week__ev" style="--c:hsl(38, 80%, 55%);--t:12;--h:20">
+                                <span class="landing-week__ev-title">Roadmap</span>
+                                <span class="landing-week__ev-time">9:00 - 10:00</span>
+                            </span>
+                            @* The overlap arrives with the team layer: two meetings colliding
+                               the way real calendars do, side by side, not stacked. *@
+                            <span class="landing-week__ev landing-week__ev--team landing-week__ev--nudge" style="--c:hsl(160, 60%, 45%);--t:22;--h:14">
+                                <span class="landing-week__ev-title">Debrief</span>
+                            </span>
+                            <span class="landing-week__ev landing-week__ev--team landing-week__ev--pulse" style="--c:hsl(220, 70%, 58%);--t:40;--h:30">
+                                <span class="landing-week__ev-title">Customer demo</span>
+                                <span class="landing-week__ev-time">13:00 - 14:30</span>
+                                <span class="landing-week__ev-meta">Video call</span>
+                                <span class="landing-week__ev-people">
+                                    <span style="--c:hsl(160, 60%, 45%)"></span>
+                                    <span style="--c:hsl(268, 60%, 58%)"></span>
+                                </span>
+                            </span>
+                        </div>
+                        <div class="landing-week__col">
+                            <span class="landing-week__day">Fri</span>
+                            <span class="landing-week__ev" style="--c:hsl(268, 60%, 58%);--t:20;--h:18">
+                                <span class="landing-week__ev-title">Retro</span>
+                                <span class="landing-week__ev-time">10:00 - 11:00</span>
+                            </span>
+                            <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(160, 60%, 45%);--t:46;--h:14">
+                                <span class="landing-week__ev-title">Office hours</span>
+                                <span class="landing-week__ev-time">14:00 - 15:00</span>
+                            </span>
+                        </div>
+                        <div class="landing-week__col landing-week__col--wknd">
+                            <span class="landing-week__day">Sat</span>
+                        </div>
+                        <div class="landing-week__col landing-week__col--wknd">
+                            <span class="landing-week__day">Sun</span>
+                            <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(38, 80%, 55%);--t:24;--h:14">
+                                <span class="landing-week__ev-title">Brunch</span>
+                                <span class="landing-week__ev-time">11:00</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                @* T23 lit stage: two symmetric overhead beams (a single beam
+                   over full bleed reads as a streak; the pair reads as a rig)
+                   and a theater vignette. Scoped to the media box, clipped by
+                   the stage's overflow, tinted by the app's colorway cycle. *@
+                <div class="landing-week__rig" aria-hidden="true">
+                    <span class="landing-week__beam landing-week__beam--l"></span>
+                    <span class="landing-week__beam landing-week__beam--r"></span>
+                </div>
+                <div class="landing-week__vignette" aria-hidden="true"></div>
+            </div>
+
+            <div class="landing-week__band">
+                <div class="landing-week__captions">
+                    <div class="landing-week__cap landing-week__cap--1">
+                        <p class="landing-eyebrow">Smart scheduling</p>
+                        <h2 class="landing-week__title">Your week, at a glance</h2>
+                        <p class="landing-week__desc">Day, week, and month views with drag-and-drop. Fast, focused, yours.</p>
+                    </div>
+                    <div class="landing-week__cap landing-week__cap--2">
+                        <p class="landing-eyebrow">Keep scrolling, it grows</p>
+                        <h2 class="landing-week__title">The whole team, on one canvas</h2>
+                        <p class="landing-week__desc">Shared calendars, role-based access, and live availability across your entire organization.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ══ Scene 4 · VIEWS: the horizontal film. A true overflow-x scroller:
+         side wheel, vertical wheel over the strip, Shift+wheel, arrow keys,
+         touch, and the visible scrollbar all drive it (wheel mapping lives
+         in landing-scenes.js with boundary release, so the page is never
+         trapped). With JS off or reduced motion it is a plain native
+         scroller. Mocks are decorative; the seven views are real: the
+         SchedulerView enum the product renders. ══ *@
+    <section id="views" class="landing-views" data-scene data-pin data-chapter="views" aria-label="Calendar views">
+      <div class="landing-views__stage">
+        <header class="landing-views__head">
+            <p class="landing-eyebrow">The views</p>
+            <h2 class="landing-views__title">One calendar, many ways to read it</h2>
+            <p class="landing-views__desc">
+                Day for the next hour, week for the shape of things, month for
+                the promises you made. Every view here ships in the scheduler
+                today.
+            </p>
+        </header>
+
+        <div class="landing-views__stripwrap">
+            <div class="landing-views__strip" data-hstrip tabindex="0" role="region"
+                 aria-label="Calendar view gallery, scrolls horizontally">
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--day" aria-hidden="true">
+                        <div class="lv-hd">
+                            <span class="lv-hd__dow" data-td="day-dow">@_dayDow</span>
+                            <span class="lv-hd__num" data-td="day-num">@_dayNum</span>
+                            <span class="lv-hd__mon" data-td="day-mon">@_dayMon</span>
+                            <span class="lv-hd__tag">Today</span>
+                        </div>
+                        <div class="lv-allday">
+                            <span class="lv-allday__tag">All day</span>
+                            <span class="lv-allday__chip" style="--c:hsl(268, 60%, 58%)">Team offsite</span>
+                        </div>
+                        <div class="lv-day__body">
+                            <span class="lv-day__gutter"><b>08</b><b>10</b><b>12</b><b>14</b><b>16</b><b>18</b></span>
+                            <span class="lv-day__track">
+                                <span class="lv-ev" style="--c:hsl(268, 60%, 58%);--t:6;--h:12"><b class="lv-ev__t">Design review</b><i class="lv-ev__m">09:00 - 09:45</i></span>
+                                <span class="lv-ev" style="--c:hsl(220, 70%, 58%);--t:26;--h:26"><b class="lv-ev__t">Deep work</b><i class="lv-ev__m">10:30 - 12:00 &#183; Focus</i></span>
+                                <span class="lv-ev" style="--c:hsl(38, 80%, 55%);--t:60;--h:11"><b class="lv-ev__t">Standup</b><i class="lv-ev__m">14:00</i></span>
+                                <span class="lv-ev" style="--c:hsl(160, 60%, 45%);--t:78;--h:14"><b class="lv-ev__t">1:1 with Sam</b><i class="lv-ev__m">16:00 - 16:30</i></span>
+                                <span class="lv-day__now" data-td-nowline style="--t:@_nowPct"></span>
+                            </span>
+                        </div>
+                    </div>
+                    <span class="landing-views__name">Day</span>
+                    <span class="landing-views__note">This hour, at full size.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--week" aria-hidden="true">
+                        @for (var i = 0; i < 7; i++)
+                        {
+                            var d = _weekDays[i];
+                            <span class="lv-col @(i >= 5 ? "lv-col--wknd" : null) @(d == _today ? "lv-col--today" : null)" data-td-col="@i">
+                                <span class="lv-colhd"><b class="lv-colhd__d" data-td-coldow>@d.ToString("ddd", Inv)</b><i class="lv-colhd__n" data-td-colday>@d.Day</i></span>
+                                <span class="lv-col__body">
+                                    <span class="lv-col__now" data-td-nowline style="--t:@_nowPct"></span>
+                                    @foreach (var b in _weekBlocks[i])
+                                    {
+                                        <span class="lv-blk" style="--c:@b.C;--t:@b.T;--h:@b.H">
+                                            <b class="lv-blk__t">@b.Name</b>
+                                            @if (b.Time is not null)
+                                            {
+                                                <i class="lv-blk__m">@b.Time</i>
+                                            }
+                                        </span>
+                                    }
+                                </span>
+                            </span>
+                        }
+                    </div>
+                    <span class="landing-views__name">Week</span>
+                    <span class="landing-views__note">The default. The whole shape of the week in one look.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--wweek" aria-hidden="true">
+                        @for (var i = 0; i < 5; i++)
+                        {
+                            var d = _weekDays[i];
+                            <span class="lv-col @(d == _today ? "lv-col--today" : null)" data-td-col="@i">
+                                <span class="lv-colhd"><b class="lv-colhd__d" data-td-coldow>@d.ToString("ddd", Inv)</b><i class="lv-colhd__n" data-td-colday>@d.Day</i></span>
+                                <span class="lv-col__body">
+                                    <span class="lv-col__now" data-td-nowline style="--t:@_nowPct"></span>
+                                    @foreach (var b in _wweekBlocks[i])
+                                    {
+                                        <span class="lv-blk" style="--c:@b.C;--t:@b.T;--h:@b.H">
+                                            <b class="lv-blk__t">@b.Name</b>
+                                            @if (b.Time is not null)
+                                            {
+                                                <i class="lv-blk__m">@b.Time</i>
+                                            }
+                                        </span>
+                                    }
+                                </span>
+                            </span>
+                        }
+                    </div>
+                    <span class="landing-views__name">Work week</span>
+                    <span class="landing-views__note">Monday to Friday, weekends off the books.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--month" aria-hidden="true">
+                        <div class="lv-hd"><span class="lv-hd__title" data-td="month-label">@_monthLabel</span></div>
+                        <div class="lv-month__dow"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+                        <div class="lv-month__grid">
+                            @for (var i = 0; i < 42; i++)
+                            {
+                                var d = _monthCells[i];
+                                var outMonth = d.Month != _monthNumber;
+                                var isToday = d == _today;
+                                var ev = !outMonth && System.Array.IndexOf(_monthDotDays, d.Day) >= 0;
+                                <span class="lv-cell @(outMonth ? "lv-cell--out" : null) @(isToday ? "lv-cell--today" : null) @(ev ? "lv-cell--ev" : null)" data-td-cell="@i" style="@(ev ? $"--c:{DotColor(d.Day)}" : null)"><i class="lv-cell__n" data-td-cellnum>@d.Day</i><s class="lv-cell__dot"></s></span>
+                            }
+                        </div>
+                    </div>
+                    <span class="landing-views__name">Month</span>
+                    <span class="landing-views__note">Commitments at a distance.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--year" aria-hidden="true">
+                        <div class="lv-hd"><span class="lv-hd__title" data-td="year">@_yearLabel</span></div>
+                        <div class="lv-year__grid">
+                            @for (var m = 0; m < 12; m++)
+                            {
+                                var shape = _yearMonths[m];
+                                <span class="lv-mini @(m == _currentMonthIndex ? "lv-mini--now" : null)" data-td-mini="@m">
+                                    <b class="lv-mini__name">@_monthAbbrevs[m]</b>
+                                    <span class="lv-mini__grid">
+                                        @for (var pad = 0; pad < shape.Lead; pad++)
+                                        {
+                                            <s class="lv-md lv-md--pad"></s>
+                                        }
+                                        @for (var day = 1; day <= shape.Days; day++)
+                                        {
+                                            var isToday = m == _currentMonthIndex && day == _todayDay;
+                                            <s class="lv-md @(isToday ? "lv-md--today" : null)" data-td-yday="@day"></s>
+                                        }
+                                    </span>
+                                </span>
+                            }
+                        </div>
+                    </div>
+                    <span class="landing-views__name">Year</span>
+                    <span class="landing-views__note">Twelve months on one screen, for the long game.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--agenda" aria-hidden="true">
+                        <div class="lv-ag__group">
+                            <span class="lv-ag__day" data-td-rel="0"><em class="lv-ag__rel" data-td-rellabel>@RelLabel(0)</em><i class="lv-ag__date" data-td-reldate>@RelDate(0)</i></span>
+                            <span class="lv-ag__ev" style="--c:hsl(268, 60%, 58%)"><i class="lv-ag__t">09:00</i><b class="lv-ag__x">Design review</b><u class="lv-ag__m">Room 4</u></span>
+                            <span class="lv-ag__ev" style="--c:hsl(220, 70%, 58%)"><i class="lv-ag__t">13:00</i><b class="lv-ag__x">Standup</b><u class="lv-ag__m">15 min</u></span>
+                        </div>
+                        <div class="lv-ag__group">
+                            <span class="lv-ag__day" data-td-rel="1"><em class="lv-ag__rel" data-td-rellabel>@RelLabel(1)</em><i class="lv-ag__date" data-td-reldate>@RelDate(1)</i></span>
+                            <span class="lv-ag__ev" style="--c:hsl(160, 60%, 45%)"><i class="lv-ag__t">10:00</i><b class="lv-ag__x">Sprint planning</b><u class="lv-ag__m">90 min</u></span>
+                        </div>
+                        <div class="lv-ag__group">
+                            <span class="lv-ag__day" data-td-rel="2"><em class="lv-ag__rel" data-td-rellabel>@RelLabel(2)</em><i class="lv-ag__date" data-td-reldate>@RelDate(2)</i></span>
+                            <span class="lv-ag__ev" style="--c:hsl(38, 80%, 55%)"><i class="lv-ag__t">15:30</i><b class="lv-ag__x">Design crit</b><u class="lv-ag__m">Studio</u></span>
+                        </div>
+                    </div>
+                    <span class="landing-views__name">Agenda</span>
+                    <span class="landing-views__note">A straight list of what is next.</span>
+                </div>
+                <div class="landing-views__panel">
+                    <div class="landing-views__mock lv--tline" aria-hidden="true">
+                        <div class="lv-hd">
+                            <span class="lv-hd__title" data-td="tl-date">@_tlDate</span>
+                            <span class="lv-tline__axis"><i>9a</i><i>11a</i><i>1p</i><i>3p</i><i>5p</i></span>
+                        </div>
+                        <div class="lv-tline__lanes">
+                            <span class="lv-lane"><em class="lv-lane__label">Room A</em><span class="lv-lane__track"><span class="lv-tline__now" data-td-tlnow style="--x:@_tlNowPct"></span><span class="lv-bar" style="--c:hsl(268, 60%, 58%);--l:6;--w:30">Ethics</span><span class="lv-bar" style="--c:hsl(220, 70%, 58%);--l:52;--w:24">Redox</span></span></span>
+                            <span class="lv-lane"><em class="lv-lane__label">Room B</em><span class="lv-lane__track"><span class="lv-tline__now" data-td-tlnow style="--x:@_tlNowPct"></span><span class="lv-bar" style="--c:hsl(160, 60%, 45%);--l:22;--w:40">Calculus</span></span></span>
+                            <span class="lv-lane"><em class="lv-lane__label">Studio</em><span class="lv-lane__track"><span class="lv-tline__now" data-td-tlnow style="--x:@_tlNowPct"></span><span class="lv-bar" style="--c:hsl(38, 80%, 55%);--l:12;--w:18">Ballet</span><span class="lv-bar" style="--c:hsl(268, 60%, 58%);--l:66;--w:26">Fossils</span></span></span>
+                            <span class="lv-lane"><em class="lv-lane__label">Lab B</em><span class="lv-lane__track"><span class="lv-tline__now" data-td-tlnow style="--x:@_tlNowPct"></span><span class="lv-bar" style="--c:hsl(220, 70%, 58%);--l:34;--w:30">Optics</span></span></span>
+                        </div>
+                    </div>
+                    <span class="landing-views__name">Timeline</span>
+                    <span class="landing-views__note">Rooms, people, and resources side by side.</span>
+                </div>
+            </div>
+            <span class="landing-views__fade landing-views__fade--l" aria-hidden="true"></span>
+            <span class="landing-views__fade landing-views__fade--r" aria-hidden="true"></span>
+        </div>
+
+        <p class="landing-views__hint">Tilt your wheel, hold Shift, or just scroll: the strip follows.</p>
+      </div>
+    </section>
+
+    @* ══ Scene 5 · BOOKING: trip-wire performance (T3). The moment the scene
+         is on stage, the booking page demos itself: slots pop in, one gets
+         picked, the confirmation lands. Scroll back up past it and return:
+         it performs again, identically. ══ *@
+    <section id="booking" class="landing-booking" data-scene data-chapter="booking" aria-label="Booking pages">
+        <div class="landing-booking__grid">
+            <div class="landing-booking__copy">
+                <p class="landing-eyebrow">Booking pages</p>
+                <h2 class="landing-booking__title">Share one link.<br />Get booked.</h2>
+                <p class="landing-booking__desc">
+                    Publish your availability as a public booking page. Visitors
+                    pick from the slots that are still free, and the booking
+                    lands straight on your calendar.
+                </p>
+                <ul class="landing-booking__points">
+                    <li>One /book link for every page you publish</li>
+                    <li>Taken slots stay taken: double bookings are blocked</li>
+                    <li>Every booking tracked and managed in one place</li>
+                </ul>
+                <a href="#colorways" class="landing__btn landing__btn--primary">Keep going</a>
+            </div>
+
+            <div class="landing-booking__stagebox" data-viewfocus aria-hidden="true">
+                <div class="landing-booking__card">
+                    <div class="landing-booking__head">
+                        <span class="landing-booking__who">Book time with Maya Chen</span>
+                        <span class="landing-booking__meta">Product demo &#183; 30 min &#183; Video call</span>
+                    </div>
+
+                    @* Two views, one page. As the scene scrolls past centre the card
+                       morphs from the compact Focus picker to the month Calendar,
+                       then back on the way up (engine publishes --vp). *@
+                    <div class="landing-booking__switch">
+                        <span class="landing-booking__switch-thumb"></span>
+                        <span class="landing-booking__switch-label">Focus</span>
+                        <span class="landing-booking__switch-label">Calendar</span>
+                    </div>
+
+                    <div class="landing-booking__flipwrap">
+                        <div class="landing-booking__flip">
+                            <div class="landing-booking__face landing-booking__face--front">
+                                <span class="landing-booking__daylabel">@_bookingDayLabel</span>
+                                <div class="landing-booking__slots">
+                                    <span class="landing-booking__slot">09:00</span>
+                                    <span class="landing-booking__slot landing-booking__slot--picked">10:30</span>
+                                    <span class="landing-booking__slot">11:30</span>
+                                    <span class="landing-booking__slot">13:00</span>
+                                    <span class="landing-booking__slot">14:30</span>
+                                    <span class="landing-booking__slot">16:00</span>
+                                </div>
+                            </div>
+                            <div class="landing-booking__face landing-booking__face--back" aria-hidden="true">
+                                <span class="landing-booking__cal-month">@_bookingCalMonth</span>
+                                <div class="landing-booking__cal-grid">
+                                    @foreach (var d in new[] { "M", "T", "W", "T", "F", "S", "S" })
+                                    {
+                                        <span class="landing-booking__cal-dow">@d</span>
+                                    }
+                                    @* Monday-first leading blanks for the booking month. *@
+                                    @for (var b = 0; b < _bookingCalLead; b++)
+                                    {
+                                        <span class="landing-booking__cal-pad"></span>
+                                    }
+                                    @for (var day = 1; day <= _bookingCalDays; day++)
+                                    {
+                                        var sel = day == _bookingCalSelected;
+                                        var dot = _bookingCalDotDays.Contains(day);
+                                        <span class="landing-booking__cal-day @(sel ? "landing-booking__cal-day--sel" : "") @(dot ? "landing-booking__cal-day--dot" : "")">@day</span>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="landing-booking__toast">
+                        <span class="landing-booking__toast-check">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                        </span>
+                        Confirmed &#183; Tuesday 10:30 &#183; on your calendar
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    @* ══ Scene 6 · COLORWAYS: the theater (T20) hosting the colorway lab
+         (T21). A pinned runway with three acts: scroll commits a colorway
+         inside narrow bands separated by dead zones (the T12 hysteresis
+         generalized), the swatch buttons pin a choice, and the pin
+         releases only when scroll commits a different act. One custom
+         property (--cw) re-themes every surface; that is the pitch, and
+         it is true of the token engine this platform ships. ══ *@
+    <section id="colorways" class="landing-cw" data-pin data-cwlab data-chapter="colorways" aria-label="Colorways">
+      <div class="landing-cw__stage">
+        <div class="landing-cw__light" aria-hidden="true">
+            <span class="landing-cw__beam landing-cw__beam--l"></span>
+            <span class="landing-cw__beam landing-cw__beam--c"></span>
+            <span class="landing-cw__beam landing-cw__beam--r"></span>
+            <span class="landing-cw__floor"></span>
+        </div>
+
+        <header class="landing-cw__head">
+            <p class="landing-eyebrow landing-cw__eyebrow">Flagship app &#183; Colorways</p>
+            <h2 class="landing-cw__title">One calendar. Every brand.</h2>
+            <p class="landing-cw__desc">
+                Themed by the same design tokens the whole platform ships.
+                Change the colorway; every surface follows.
+            </p>
+        </header>
+
+        @* The performer: an app vignette under the light. The brand mark
+           sits where traffic-light dots would have been (identity rule). *@
+        <div class="landing-cw__app" aria-hidden="true">
+            <div class="landing-cw__appbar">
+                <span class="landing-cw__mark">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="16" height="16">
+                        <circle cx="16" cy="16" r="15" fill="currentColor" opacity="0.15"/>
+                        <circle cx="16" cy="16" r="10" fill="currentColor" opacity="0.3"/>
+                        <circle cx="16" cy="16" r="5"  fill="currentColor"/>
+                    </svg>
+                </span>
+                <span class="landing-cw__apptitle">Alectrone Calendar</span>
+                <span class="landing-cw__pill">Booking</span>
+            </div>
+            <div class="landing-cw__body">
+                <div class="landing-cw__month">
+                    <span class="landing-cw__mlabel">@_cwMonthLabel</span>
+                    <div class="landing-cw__mgrid">
+                        @foreach (var dow in new[] { "M", "T", "W", "T", "F", "S", "S" })
+                        {
+                            <span class="landing-cw__dow">@dow</span>
+                        }
+                        @for (var d = 1; d <= 28; d++)
+                        {
+                            <span class="landing-cw__cell @(d == _cwDay ? "landing-cw__cell--today" : null) @(_cwDotDays.Contains(d) ? "landing-cw__cell--dot" : null)">@d</span>
+                        }
+                    </div>
+                </div>
+                <div class="landing-cw__daypanel">
+                    <span class="landing-cw__dlabel">@_cwDayLabel</span>
+                    <span class="landing-cw__slot landing-cw__slot--active">Design sync &#183; 09:00</span>
+                    <span class="landing-cw__slot">Customer demo &#183; 11:30</span>
+                    <span class="landing-cw__slot">Roadmap &#183; 14:00</span>
+                    <span class="landing-cw__book">Book a slot</span>
+                </div>
+            </div>
+        </div>
+
+        @* Swatches are real controls: scroll demonstrates, click pins. *@
+        <div class="landing-cw__bar">
+            <div class="landing-cw__swatches">
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--iris" data-cw-swatch aria-pressed="true" aria-label="Iris Purple colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--ruby" data-cw-swatch aria-pressed="false" aria-label="Ruby Red colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--ember" data-cw-swatch aria-pressed="false" aria-label="Ember Orange colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--solar" data-cw-swatch aria-pressed="false" aria-label="Solar Amber colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--meadow" data-cw-swatch aria-pressed="false" aria-label="Meadow Green colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--aurora" data-cw-swatch aria-pressed="false" aria-label="Aurora Cyan colorway"></button>
+                <button type="button" class="landing-cw__swatch landing-cw__swatch--cobalt" data-cw-swatch aria-pressed="false" aria-label="Cobalt Blue colorway"></button>
+            </div>
+            <div class="landing-cw__captions">
+                <span class="landing-cw__cap landing-cw__cap--0"><b>Iris Purple</b><i>The signature. Alectrona's iris, lit from within.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--1"><b>Ruby Red</b><i>Launch-week urgency, bottled.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--2"><b>Ember Orange</b><i>Warm momentum for the afternoon push.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--3"><b>Solar Amber</b><i>Golden hour for teams that ship at dusk.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--4"><b>Meadow Green</b><i>Fresh starts and clean calendars.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--5"><b>Aurora Cyan</b><i>Cool morning light for calm, early schedules.</i></span>
+                <span class="landing-cw__cap landing-cw__cap--6"><b>Cobalt Blue</b><i>Steady blue for the long quarters.</i></span>
+            </div>
+            <a href="#ai" class="landing__btn landing__btn--outline landing-cw__cta">What else it does</a>
+        </div>
+      </div>
+    </section>
+
+    @* ══ Scene 6b · AI: trip-wire performance (T3). The command types itself,
+         then the event lands on Friday. The motion demonstrates the claim:
+         plain language in, scheduled time out. ══ *@
+    <section id="ai" class="landing-ai" data-scene data-chapter="ai" aria-label="AI assistant">
+        <header class="landing-ai__header">
+            <p class="landing-eyebrow">AI assistant</p>
+            <h2 class="landing-ai__title">Say it. It's scheduled.</h2>
+            <p class="landing-ai__desc">
+                The built-in assistant turns plain language into events and
+                finds free time across calendars. Five AI providers stand
+                behind it, so one outage never takes it down.
+            </p>
+        </header>
+
+        <div class="landing-ai__stagebox" aria-hidden="true">
+            <div class="landing-ai__bar">
+                <span class="landing-ai__mark">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="18" height="18">
+                        <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
+                        <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
+                        <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
+                    </svg>
+                </span>
+                <span class="landing-ai__type">Lunch with Maya on Friday at noon</span>
+            </div>
+            <div class="landing-ai__strip">
+                <span class="landing-ai__day">Mon</span>
+                <span class="landing-ai__day">Tue</span>
+                <span class="landing-ai__day">Wed</span>
+                <span class="landing-ai__day">Thu</span>
+                <span class="landing-ai__day landing-ai__day--hit">
+                    Fri
+                    <span class="landing-ai__chip">
+                        <span class="landing-ai__chip-title">Lunch with Maya</span>
+                        <span class="landing-ai__chip-time">12:00 &#183; 1h</span>
+                    </span>
+                </span>
+            </div>
+        </div>
+    </section>
+
+    @* ══ Scene 7 · PROOF: pinned overture (T2/T15/T17). Dawn rises with
+         scroll, a billboard numeral anchors the stage, counters earn the
+         numbers as the visitor arrives. Every number is counted in the
+         product repository; adoption statistics are banned until measured. ══ *@
+    <section class="landing-proof" data-pin data-chapter="proof" aria-label="Product facts">
+        <div class="landing-proof__stage">
+            <div class="landing-proof__dawn" aria-hidden="true"></div>
+            <span class="landing-proof__billboard" aria-hidden="true">256</span>
+            <h2 class="landing-proof__statement">Built to be trusted with everyone's time.</h2>
+            <p class="landing-proof__note">No adoption theatre. These are engineering facts, counted in the product.</p>
+            <dl class="landing-proof__stats">
+                <div class="landing-proof__stat">
+                    <dt class="landing-proof__num" data-count-to="7">7</dt>
+                    <dd class="landing-proof__label">Calendar views, day through timeline</dd>
+                </div>
+                <div class="landing-proof__stat">
+                    <dt class="landing-proof__num" data-count-to="11">11</dt>
+                    <dd class="landing-proof__label">Scoped permissions over calendars, events, and bookings</dd>
+                </div>
+                <div class="landing-proof__stat">
+                    <dt class="landing-proof__num" data-count-to="256">256</dt>
+                    <dd class="landing-proof__label">Bits of AES-GCM on every encrypted field</dd>
+                </div>
+                <div class="landing-proof__stat">
+                    <dt class="landing-proof__num" data-count-to="5">5</dt>
+                    <dd class="landing-proof__label">AI providers behind one assistant</dd>
+                </div>
+            </dl>
+        </div>
+    </section>
+
+    @* ══ Scene 10 · Close: the encore. The demo keeps the encore composition
+         but not its plan names, so no pricing detail survives here. ══ *@
+    <section class="landing-close" data-scene>
+        <div class="landing-close__glow" aria-hidden="true"></div>
+        <div class="landing__section-inner">
+            <h2 class="landing-close__title">Ready to own the week?</h2>
+            <p class="landing-close__subtitle">
+                Team scheduling, public booking pages, and an assistant that
+                turns plain words into events, on one calendar.
+            </p>
+            <div class="landing-hero__cta-row">
+                <a href="#schedule" class="landing__btn landing__btn--primary landing__btn--lg">
+                    Take the tour again
+                </a>
+                <a href="mailto:sales@alectrone.com" class="landing__btn landing__btn--outline landing__btn--lg">
+                    Email sales
+                </a>
+            </div>
+        </div>
+    </section>
+
+    @* ── Footer ── *@
+    <footer class="landing__footer">
+        <div class="landing__footer-inner">
+            <div class="landing__footer-brand">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="24" height="24" aria-hidden="true">
+                    <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
+                    <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
+                    <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
+                </svg>
+                <span>Alectrone</span>
+            </div>
+            <div class="landing__footer-links">
+                <div class="landing__footer-col">
+                    <h4>Product</h4>
+                    <a href="#schedule">Team scheduling</a>
+                    <a href="#views">Calendar views</a>
+                    <a href="#booking">Booking pages</a>
+                </div>
+                <div class="landing__footer-col">
+                    <h4>More</h4>
+                    <a href="#colorways">Colorways</a>
+                    <a href="#ai">AI assistant</a>
+                    <a href="mailto:sales@alectrone.com">Email sales</a>
+                </div>
+                <div class="landing__footer-col">
+                    <h4>About this build</h4>
+                    <span class="landing__footer-note">Blazor WebAssembly demo</span>
+                    <span class="landing__footer-note">Homepage only</span>
+                    <span class="landing__footer-note">No account required</span>
+                </div>
+            </div>
+            <div class="landing__footer-bottom">
+                <span>&copy; @DateTime.Now.Year Alectrone. All rights reserved.</span>
+            </div>
+        </div>
+    </footer>
+</div>
+
+@code {
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+    private static readonly string[] _monthAbbrevs = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+    private static readonly int[] _cwDotDays = { 3, 8, 15, 24 };
+    private static readonly int[] _bookingCalDotDays = { 8, 12, 19, 26 };
+
+    // A category color per view-mock event, kept to the four-color palette
+    // (purple / blue / green / amber) the landing mocks established. Time is
+    // optional: only tall enough chips carry a start time (short blocks show
+    // just the title, the way a real week column ellipsises a busy day).
+    private readonly record struct Blk(string Name, string C, int T, int H, string? Time = null);
+
+    private string _monthLabel = "";
+    private string _bookingDayLabel = "";
+    private string _cwDayLabel = "";
+    private string _cwMonthLabel = "";
+    private int _currentMonthIndex;
+    private int _cwDay;
+
+    // Booking-card month face: derived from the booking date so the grid shape,
+    // the selected day, and the label are always calendar-true (the Server host
+    // hard-coded August 2026 here).
+    private string _bookingCalMonth = "";
+    private int _bookingCalLead;
+    private int _bookingCalDays;
+    private int _bookingCalSelected;
+
+    // ── View-strip mock date model. Rendered from the client clock, so every
+    //    [data-td*] slot already shows the visitor's own day / date / month /
+    //    year; landing-scenes.js re-derives them anyway (it is written for the
+    //    server-rendered host), which is a harmless no-op here. ─────────────
+    private DateTime _today;
+    private string _dayDow = "", _dayNum = "", _dayMon = "", _nowPct = "0";
+    // Hero time-dial hand angles (degrees clockwise from 12), decorative.
+    private string _clockHour = "0", _clockMin = "0";
+    private DateTime[] _weekDays = System.Array.Empty<DateTime>();
+    private DateTime[] _monthCells = System.Array.Empty<DateTime>();
+    private int _monthNumber;
+    private static readonly int[] _monthDotDays = { 3, 8, 15, 24 };
+    private static readonly string[] _dotPalette =
+        { "hsl(268, 60%, 58%)", "hsl(220, 70%, 58%)", "hsl(160, 60%, 45%)", "hsl(38, 80%, 55%)" };
+    private string _yearLabel = "";
+    private string _tlDate = "";
+    private string _tlNowPct = "0";
+    private List<Blk>[] _weekBlocks = System.Array.Empty<List<Blk>>();
+    private List<Blk>[] _wweekBlocks = System.Array.Empty<List<Blk>>();
+
+    // Year view: for each month of the current year, the Monday-start leading
+    // blank count and the day count, so each mini renders a real month grid
+    // (correct first-weekday offset). Today is lit only in the current month.
+    private readonly record struct MonthShape(int Lead, int Days);
+    private MonthShape[] _yearMonths = System.Array.Empty<MonthShape>();
+    private int _todayDay;
+
+    // Scene engine handle (progressive enhancement; the page is complete
+    // without it, so every failure path is swallowed).
+    private IJSObjectReference? _motion;
+
+    private string DotColor(int day)
+    {
+        var i = System.Array.IndexOf(_monthDotDays, day);
+        return _dotPalette[(i < 0 ? 0 : i) % _dotPalette.Length];
+    }
+
+    private string RelLabel(int off) => off switch
+    {
+        0 => "Today",
+        1 => "Tomorrow",
+        _ => _today.AddDays(off).ToString("ddd", Inv),
+    };
+
+    // Absolute date beside each agenda group heading.
+    private string RelDate(int off) => _today.AddDays(off).ToString("MMM d", Inv);
+
+    protected override void OnInitialized()
+    {
+        // Decorative mock dates track the clock so they never go stale.
+        // Invariant culture keeps the English month and day names the mocks assume.
+        var now = DateTime.Now;
+        var today = now.Date;
+        _today = today;
+
+        // Day view header + "now" line (window 07:00-21:00).
+        _dayDow = today.ToString("ddd", Inv);
+        _dayNum = today.Day.ToString(Inv);
+        _dayMon = today.ToString("MMM", Inv);
+        var nowP = System.Math.Clamp((now.TimeOfDay.TotalHours - 7.0) / 14.0, 0, 1) * 100.0;
+        _nowPct = nowP.ToString("0.#", Inv);
+
+        // Hero time-dial: hands set to the real current time (decorative, aria-hidden).
+        var hour12 = now.Hour % 12;
+        _clockHour = (hour12 * 30 + now.Minute * 0.5).ToString("0.##", Inv);
+        _clockMin = (now.Minute * 6).ToString("0.##", Inv);
+
+        // Week / work week: this week's Monday-start run of days.
+        var mondayBack = ((int)today.DayOfWeek + 6) % 7;
+        var weekStart = today.AddDays(-mondayBack);
+        _weekDays = new DateTime[7];
+        for (var i = 0; i < 7; i++) _weekDays[i] = weekStart.AddDays(i);
+
+        // Month: a Monday-start 6x7 grid over the current month.
+        var firstOfMonth = new DateTime(today.Year, today.Month, 1);
+        var gridBack = ((int)firstOfMonth.DayOfWeek + 6) % 7;
+        var gridStart = firstOfMonth.AddDays(-gridBack);
+        _monthCells = new DateTime[42];
+        for (var i = 0; i < 42; i++) _monthCells[i] = gridStart.AddDays(i);
+        _monthNumber = today.Month;
+
+        _currentMonthIndex = today.Month - 1;
+        _todayDay = today.Day;
+        _monthLabel = today.ToString("MMMM yyyy", Inv);
+        _yearLabel = today.Year.ToString(Inv);
+        _tlDate = today.ToString("ddd d MMM", Inv);
+
+        // Year minis: real per-month shape (Monday-start offset + day count).
+        _yearMonths = new MonthShape[12];
+        for (var m = 0; m < 12; m++)
+        {
+            var first = new DateTime(today.Year, m + 1, 1);
+            var lead = ((int)first.DayOfWeek + 6) % 7; // Mon = 0
+            _yearMonths[m] = new MonthShape(lead, DateTime.DaysInMonth(today.Year, m + 1));
+        }
+
+        // Timeline "now" marker across the 9a-5p axis window.
+        var tlP = System.Math.Clamp((now.TimeOfDay.TotalHours - 9.0) / 8.0, 0, 1) * 100.0;
+        _tlNowPct = tlP.ToString("0.#", Inv);
+
+        // The same team's week, read every way: the mocks below echo the hero
+        // and schedule scenes so the seven views tell one coherent story. Tall
+        // chips carry a start time; short ones stay title-only.
+        _weekBlocks = new[]
+        {
+            new List<Blk> { new("Design review", _dotPalette[0], 12, 26, "9:00"), new("Standup", _dotPalette[1], 72, 12) },
+            new List<Blk> { new("Deep work", _dotPalette[1], 8, 24, "8:00"), new("Sprint", _dotPalette[2], 54, 24, "11:30") },
+            new List<Blk> { new("1:1 · Sam", _dotPalette[2], 34, 16) },
+            new List<Blk> { new("Roadmap", _dotPalette[3], 12, 18, "9:00"), new("Demo", _dotPalette[1], 56, 26, "13:00") },
+            new List<Blk> { new("Retro", _dotPalette[0], 20, 18, "10:00"), new("Office hrs", _dotPalette[2], 70, 14) },
+            new List<Blk>(),
+            new List<Blk> { new("Brunch", _dotPalette[3], 30, 14) },
+        };
+        _wweekBlocks = new[]
+        {
+            new List<Blk> { new("Design review", _dotPalette[0], 12, 24, "9:00") },
+            new List<Blk> { new("Deep work", _dotPalette[1], 8, 20, "8:00"), new("Sprint", _dotPalette[2], 56, 22, "11:30") },
+            new List<Blk> { new("1:1 · Sam", _dotPalette[2], 30, 16), new("Design crit", _dotPalette[3], 60, 20, "14:30") },
+            new List<Blk> { new("Roadmap", _dotPalette[3], 14, 18, "9:00"), new("Demo", _dotPalette[1], 54, 24, "13:00") },
+            new List<Blk> { new("Retro", _dotPalette[0], 26, 18, "10:00") },
+        };
+
+        var daysToTuesday = ((int)DayOfWeek.Tuesday - (int)today.DayOfWeek + 7) % 7;
+        if (daysToTuesday == 0) daysToTuesday = 7;
+        var bookingDate = today.AddDays(daysToTuesday);
+        _bookingDayLabel = bookingDate.ToString("dddd, MMMM d", Inv);
+
+        // Booking-card month face: the booking date's own month, Monday-first.
+        var bookingFirst = new DateTime(bookingDate.Year, bookingDate.Month, 1);
+        _bookingCalMonth = bookingDate.ToString("MMMM yyyy", Inv);
+        _bookingCalLead = ((int)bookingFirst.DayOfWeek + 6) % 7;
+        _bookingCalDays = DateTime.DaysInMonth(bookingDate.Year, bookingDate.Month);
+        _bookingCalSelected = bookingDate.Day;
+
+        // The colorway vignette shows a stylized 28-cell month labeled with
+        // the booking date's month, so "Tuesday N" is always calendar-true;
+        // clamp so the highlighted day always exists in the grid.
+        _cwDay = Math.Min(bookingDate.Day, 28);
+        _cwDayLabel = "Tuesday " + _cwDay;
+        _cwMonthLabel = bookingDate.ToString("MMMM yyyy", Inv);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            _motion = await JS.InvokeAsync<IJSObjectReference>("import", "./js/landing-scenes.js");
+            await _motion.InvokeVoidAsync("init", "calendar-landing");
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException)
+        {
+            // Motion is progressive enhancement; the page is fully usable
+            // without it (base CSS renders the composed final pose).
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_motion is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _motion.InvokeVoidAsync("destroy");
+            await _motion.DisposeAsync();
+        }
+        catch (Exception ex) when (ex is JSException or InvalidOperationException or ObjectDisposedException)
+        {
+            // Tearing down; nothing left to clean up on the client.
+        }
+    }
+}

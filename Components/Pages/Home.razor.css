@@ -1,0 +1,4042 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Alectrone Calendar - scene-based landing page
+   (Marketing Motion Design handbook, docs-content/Developers/
+    MarketingPageMotionDesign.md)
+
+   Motion contract:
+   - The page is static SSR. wwwroot/js/landing-scenes.js is progressive
+     enhancement: it flips state classes (.active / .pose2 / .past /
+     .has-rail / .is-scrolled) and publishes custom properties (--p,
+     --fill, --exit); every visual transition lives HERE in CSS.
+   - Base styles (no .has-motion) render the composed final pose, so the
+     page is complete with JavaScript disabled. The engine adds
+     .has-motion before arming any scene, and only then do pre-entry
+     poses hide anything.
+   - Continuous motion uses transform, opacity, brightness, and
+     background-position only.
+   - Every entrance has a reverse pose so scenes replay cleanly.
+   - Reduced motion: final poses, no pinning, no animation.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── Variables ── */
+.landing {
+    /* Marketing surface is brand-locked to the Alectrone iris identity (hue 268)
+       so the public landing always presents the same look in every Alectrone
+       app, immune to any theme a returning user persisted in the app shell. */
+    --lp-primary: hsl(268, 62%, 58%);
+    --lp-primary-strong: hsl(268, 70%, 48%);
+    --lp-primary-soft: hsl(268, 62%, 68%);
+    --lp-primary-muted: hsl(268, 40%, 24%);
+    --lp-green: #10b981;
+    --lp-bg-deep: hsl(268, 30%, 6%);
+    --lp-bg: hsl(268, 20%, 9%);
+    --lp-bg-card: hsl(268, 16%, 13%);
+    --lp-bg-card-hover: hsl(268, 18%, 16%);
+    --lp-border: hsl(268, 16%, 18%);
+    --lp-text: hsl(268, 10%, 92%);
+    --lp-text-muted: hsl(268, 10%, 60%);
+    --lp-radius: 12px;
+    --lp-radius-lg: 16px;
+    --lp-transition: 200ms ease;
+    --lp-max-width: 1200px;
+    --lp-header-h: 64px;
+    /* Motion tokens (handbook 11.2 scale). */
+    --lp-motion-fast: 150ms;
+    --lp-motion-base: 300ms;
+    --lp-motion-scene: 500ms;
+    --lp-ease-enter: cubic-bezier(0.16, 1, 0.3, 1);
+    --lp-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+    margin: 0;
+    padding: 0;
+    min-height: 100vh;
+    background: var(--lp-bg-deep);
+    color: var(--lp-text);
+    font-family: var(--ux-font-family, 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+}
+
+/* ── Shared vocabulary ── */
+.landing-eyebrow {
+    margin: 0 0 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--lp-primary-soft);
+}
+
+/* The accent is a word, not a rainbow: one iris highlight inside otherwise
+   quiet type. */
+.landing-accent {
+    color: var(--lp-primary-soft);
+}
+
+/* ── Header / Nav (T11: quiet chrome; elevation flips with hysteresis) ── */
+.landing__header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    background: hsla(268, 20%, 9%, 0.6);
+    border-bottom: 1px solid transparent;
+    transition: background var(--lp-motion-base) ease, border-color var(--lp-motion-base) ease;
+}
+
+/* .is-scrolled is flipped by the engine at >24px down / <4px up. */
+.landing__header.is-scrolled {
+    background: hsla(268, 20%, 9%, 0.85);
+    border-bottom-color: var(--lp-border);
+}
+
+.landing__header-inner {
+    padding: 0 32px;
+    height: var(--lp-header-h);
+    display: flex;
+    align-items: center;
+    gap: 32px;
+}
+
+.landing__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    color: var(--lp-text);
+    font-weight: 600;
+    font-size: 1.1rem;
+    white-space: nowrap;
+}
+
+.landing__nav {
+    display: flex;
+    gap: 24px;
+}
+
+.landing__nav a {
+    color: var(--lp-text-muted);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: color var(--lp-transition);
+}
+.landing__nav a:hover {
+    color: var(--lp-text);
+}
+
+.landing__auth-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ── Buttons ── */
+.landing__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    text-decoration: none;
+    /* Explicit list, never `all`: the focus outline must snap into place,
+       not morph in from the UA's initial ring. */
+    transition: color var(--lp-transition), background-color var(--lp-transition),
+                border-color var(--lp-transition), box-shadow var(--lp-transition),
+                transform var(--lp-transition);
+    cursor: pointer;
+    border: none;
+    white-space: nowrap;
+}
+
+.landing__btn--ghost {
+    background: transparent;
+    color: var(--lp-text-muted);
+    border: 1px solid transparent;
+}
+.landing__btn--ghost:hover {
+    color: var(--lp-text);
+    background: hsla(268, 20%, 100%, 0.06);
+}
+
+.landing__btn--primary {
+    background: var(--lp-primary);
+    color: #fff;
+    box-shadow: 0 4px 18px hsla(268, 62%, 58%, 0.25);
+}
+.landing__btn--primary:hover {
+    background: var(--lp-primary-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 28px hsla(268, 62%, 58%, 0.4);
+}
+
+.landing__btn--outline {
+    background: transparent;
+    color: var(--lp-text);
+    border: 1px solid var(--lp-border);
+}
+.landing__btn--outline:hover {
+    border-color: var(--lp-primary-soft);
+    color: var(--lp-primary-soft);
+    background: hsla(268, 62%, 58%, 0.06);
+    transform: translateY(-2px);
+}
+
+.landing__btn--lg {
+    padding: 12px 28px;
+    font-size: 1rem;
+    border-radius: 10px;
+}
+
+.landing__btn--block {
+    width: 100%;
+}
+
+/* Focus is a designed state on this dark stage: every interactive element
+   gets the iris ring (never a removed outline). tabindex="-1" is excluded:
+   Blazor's FocusOnNavigate focuses the h1 programmatically for screen
+   readers, and a heading must not paint a ring. Anchor targets clear the
+   sticky header when reached by in-page navigation. */
+.landing a:focus-visible,
+.landing button:focus-visible,
+.landing [tabindex]:not([tabindex="-1"]):focus-visible {
+    outline: 2px solid var(--lp-primary-soft);
+    outline-offset: 3px;
+}
+
+/* Each top-level section is a scroll-snap stop, so scrolling holds on one
+   section at a time. scroll-margin-top keeps the snapped section (and in-page
+   anchors) clear of the sticky header. The landing scrolls the DOCUMENT, so
+   the scroll-snap-type container rule lives in the host app.css
+   (html:has(#calendar-landing)); this side only declares the snap targets. */
+.landing > section,
+.landing > footer {
+    scroll-snap-align: start;
+    scroll-margin-top: calc(var(--lp-header-h) + 8px);
+}
+
+/* The views film strip converts page scroll into horizontal strip travel and
+   owns the wheel, so it must scroll freely: a snap tug would keep the runway
+   from completing the film (the same reason the App homepage's shelf opts
+   out). Child-combined so it outranks the `.landing > section` rule above on
+   specificity. The other tall pinned runways are taller than the proximity
+   range, so snapping only bites at their entry, never mid-scrub. */
+.landing > .landing-views {
+    scroll-snap-align: none;
+}
+
+/* ── Mobile nav toggle: two bars that cross into a close mark. Hidden until
+   the engine arms motion; the base layout keeps the nav in flow instead,
+   so the anchors stay reachable with JS off and under reduced motion. ── */
+.landing__nav-toggle {
+    display: none;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    gap: 5px;
+    width: 40px;
+    height: 40px;
+    padding: 0 10px;
+    background: transparent;
+    border: 1px solid var(--lp-border);
+    border-radius: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.landing__nav-toggle-bar {
+    height: 2px;
+    border-radius: 2px;
+    background: var(--lp-text);
+    transition: transform var(--lp-motion-base) var(--lp-ease-enter);
+}
+
+.landing.nav-open .landing__nav-toggle-bar:nth-child(1) { transform: translateY(3.5px) rotate(45deg); }
+.landing.nav-open .landing__nav-toggle-bar:nth-child(2) { transform: translateY(-3.5px) rotate(-45deg); }
+
+/* The panel-only sign-in link surfaces where the compact bar hides the
+   ghost button (under 480px). */
+.landing__nav-signin {
+    display: none;
+}
+
+/* ── Chapter spine (T18) ── */
+.landing-rail {
+    position: fixed;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 90;
+}
+
+.landing-rail__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    opacity: 0;
+    transform: translateX(-0.75rem);
+    pointer-events: none;
+    transition: opacity var(--lp-motion-scene) ease, transform var(--lp-motion-scene) var(--lp-ease-enter);
+}
+
+/* .has-rail flips at 55% of a viewport of scroll, back off below 35%. */
+.landing.has-rail .landing-rail__inner {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+.landing-rail__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.3rem 0.4rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--lp-text-muted);
+}
+
+.landing-rail__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--lp-border);
+    transition: background var(--lp-motion-base) ease, box-shadow var(--lp-motion-base) ease, transform var(--lp-motion-base) ease;
+}
+
+/* Labels run vertically along the rail (top to bottom), so the spine
+   stays slim and never collides with full-bleed stages. */
+.landing-rail__label {
+    writing-mode: vertical-rl;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    max-height: 0;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(-0.3rem);
+    transition: opacity var(--lp-motion-base) ease, transform var(--lp-motion-base) ease,
+                color var(--lp-motion-base) ease, max-height var(--lp-motion-scene) ease;
+}
+
+.landing-rail__link:hover .landing-rail__label {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 8rem;
+}
+
+.landing-rail__link.active .landing-rail__dot {
+    background: var(--lp-primary-soft);
+    box-shadow: 0 0 10px hsla(268, 62%, 68%, 0.8);
+    transform: scale(1.25);
+}
+
+.landing-rail__link.active .landing-rail__label {
+    opacity: 1;
+    transform: translateY(0);
+    max-height: 8rem;
+    color: var(--lp-text);
+}
+
+/* ═══ Scene 1 · Hero overture (T1 entrance + parallax; a scrubbed film
+   on --exit, T14/T15). Beats, as fractions of the runway:
+     0.00-0.32  the supporting copy recedes, the title shrinks and rises,
+                the statement grows from subtitle to display line (--sg)
+     0.06-0.48  the statement's two-beat gradient fill sweeps (--st)
+     0.42-0.55  held pose; the line handoff plays here
+     0.55-0.90  the whole stage departs (content faster than backdrop)
+   Base, mobile, and reduced motion sit at --exit 0: the composed
+   single-viewport hero with the statement as a readable subtitle. ═══ */
+.landing-hero {
+    --exit: 0;
+    --sg: clamp(0, calc(var(--exit) / 0.32), 1);
+    --st: clamp(0, calc((var(--exit) - 0.06) / 0.42), 1);
+    position: relative;
+}
+
+.landing-hero__stage {
+    position: relative;
+    min-height: calc(100vh - var(--lp-header-h));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4rem 24px 5rem;
+    overflow: hidden;
+}
+
+/* T14: on departure, content rises faster than the backdrop, so the flat
+   composition gains depth exactly when it releases you. */
+.landing-hero__backdrop {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    transform: translateY(calc(max(var(--exit) - 0.55, 0) * -6rem));
+}
+
+.landing-hero__inner {
+    position: relative;
+    max-width: 800px;
+    transform: translateY(calc(max(var(--exit) - 0.55, 0) * -12rem));
+    /* The stage stays lit through the growth and hold beats, then empties
+       before it unpins. */
+    opacity: calc(1 - max(var(--exit) - 0.55, 0) * 3);
+}
+
+/* The title yields the frame: it shrinks, rises, and dims to scenery as
+   the statement grows (T17: statement dimming as depth). */
+.landing-hero .landing-hero__title {
+    transform: translateY(calc(var(--sg) * -2.2rem)) scale(calc(1 - var(--sg) * 0.24));
+    opacity: calc(1 - var(--sg) * 0.5);
+}
+
+.landing-hero .landing-eyebrow,
+.landing-hero .landing-hero__lede,
+.landing-hero .landing-hero__cta-row {
+    opacity: calc(1 - min(var(--exit) / 0.22, 1) * 0.92);
+}
+
+/* ── The in-hero chapter statement: subtitle at rest (scale 0.42),
+   display line at full growth. The oversize layout box is tucked with
+   static margins; by the time the text outgrows them, its neighbors have
+   receded. Fill and handoff derive from --st. ── */
+.landing-hero__statement {
+    margin: -0.9rem auto -1.1rem;
+    font-size: clamp(2rem, 4.6vw, 3.4rem);
+    font-weight: 800;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    transform: translateY(calc(var(--sg) * -1rem)) scale(calc(0.42 + var(--sg) * 0.58));
+}
+
+.landing-hero__statement-line {
+    display: block;
+    background-image: linear-gradient(100deg,
+        hsl(268, 30%, 96%) 0%, hsl(268, 65%, 80%) 30%, var(--lp-primary) 48%,
+        hsla(268, 10%, 92%, 0.22) 52%, hsla(268, 10%, 92%, 0.22) 100%);
+    background-size: 210% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+.landing-hero__statement-line--1 {
+    --l1: clamp(0, calc(var(--st) / 0.5), 1);
+    --hand: clamp(0, calc((var(--st) - 0.75) / 0.25), 1);
+    background-position-x: calc(100% * (1 - var(--l1)));
+    opacity: calc(1 - var(--hand) * 0.45);
+    transform: scale(calc(1 - var(--hand) * 0.03));
+}
+
+.landing-hero__statement-line--2 {
+    --l2: clamp(0, calc((var(--st) - 0.3) / 0.5), 1);
+    --hand: clamp(0, calc((var(--st) - 0.75) / 0.25), 1);
+    background-position-x: calc(100% * (1 - var(--l2)));
+    transform: scale(calc(1 + var(--hand) * 0.04));
+    filter: brightness(calc(1 + var(--hand) * 0.15));
+}
+
+/* Aurora layers: the element carries only geometry + the JS parallax
+   transform; the visual lives on ::before so idle drift never fights the
+   parallax transform (T1 discipline). */
+.landing-aurora {
+    position: absolute;
+    width: 44rem;
+    height: 44rem;
+    transition: transform 0.5s var(--lp-ease-enter);
+    will-change: transform;
+}
+
+.landing-aurora::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0;
+    animation:
+        landing-fade-in 1.6s ease 0.2s forwards,
+        landing-drift 28s ease-in-out 2s infinite alternate;
+}
+
+/* One identity, three temperatures of it: iris, its indigo neighbor, and a
+   deep orchid. The backdrop stays in the brand family instead of drifting
+   into rainbow territory. */
+.landing-aurora--violet { top: -18rem; left: 6%; }
+.landing-aurora--violet::before {
+    background: radial-gradient(closest-side, hsla(268, 70%, 58%, 0.32), transparent 70%);
+}
+
+.landing-aurora--indigo { top: -9rem; right: 0; }
+.landing-aurora--indigo::before {
+    background: radial-gradient(closest-side, hsla(243, 65%, 60%, 0.17), transparent 70%);
+    animation-delay: 0.45s, 3s;
+    animation-duration: 1.6s, 36s;
+}
+
+.landing-aurora--orchid { bottom: -24rem; left: 30%; }
+.landing-aurora--orchid::before {
+    background: radial-gradient(closest-side, hsla(288, 55%, 52%, 0.15), transparent 70%);
+    animation-delay: 0.7s, 4s;
+    animation-duration: 1.6s, 42s;
+}
+
+/* The week-grid sheet: the product's own geometry as scenery. */
+.landing-hero__gridsheet {
+    position: absolute;
+    inset: -2rem;
+    background-image:
+        linear-gradient(hsla(268, 10%, 92%, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, hsla(268, 10%, 92%, 0.05) 1px, transparent 1px);
+    background-size: 3.5rem 3.5rem;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 0%, transparent 75%);
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 0%, transparent 75%);
+    opacity: 0;
+    animation: landing-fade-in 1.4s ease 0.1s forwards;
+    transition: transform 0.5s var(--lp-ease-enter);
+}
+
+/* ═══ Immersive product hero. The centred hero became an editorial split: the
+   copy holds the left column and animates on scroll exactly as before (all
+   overture transforms live on the title/statement, so moving the column does
+   not touch them), while the right column carries Concept A elevated: the week
+   orbiting a precise time dial in true perspective, over deep-space atmosphere.
+   The columns never overlap, so the type stays crisp with no scrim. ═══ */
+.landing-hero__layout {
+    position: relative;
+    width: 100%;
+    max-width: 1240px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: center;
+    gap: clamp(28px, 4vw, 64px);
+    text-align: left;
+}
+
+/* The copy column: left-aligned now. The overture transforms are unchanged;
+   only the growth origin moves to the left edge so the statement expands into
+   the column instead of off-centre. */
+.landing-hero__layout .landing-hero__inner {
+    max-width: 34rem;
+}
+.landing-hero__layout .landing-hero__title,
+.landing-hero__layout .landing-hero__statement {
+    transform-origin: left center;
+}
+.landing-hero__layout .landing-hero__statement {
+    margin-inline: 0;
+}
+
+/* ── Concept A, elevated. Wrapper = perspective + the JS parallax transform
+   (a mid-depth layer, reset to none on mouseleave); it must NOT be positioned
+   by transform. It fades out as the overture releases via the inherited
+   --exit. ── */
+.landing-hero__sun {
+    position: relative;
+    justify-self: center;
+    width: 100%;
+    max-width: 540px;
+    aspect-ratio: 1;
+    perspective: 1100px;
+    pointer-events: none;
+    will-change: transform;
+    opacity: calc(1 - max(var(--exit) - 0.4, 0) * 2.6);
+}
+
+/* The tilted plane owns the rake + entrance + the --exit recede, so the
+   parallax on the wrapper never fights it. Everything rides this plane, so the
+   orbit reads as a disc seen at an angle. --R is the orbit radius; --orbit is
+   the slow, celestial revolution period shared by the orbit spin, the
+   counter-turn that keeps each seat upright, and each seat's depth pulse. */
+.landing-hsun {
+    position: absolute;
+    inset: 0;
+    --R: clamp(120px, 18vw, 204px);
+    --orbit: 90s;
+    transform:
+        rotateX(28deg)
+        rotateY(-7deg)
+        translateY(calc(var(--exit) * -2rem))
+        scale(calc(1 - var(--exit) * 0.05));
+    animation: landing-hsun-in 1.3s var(--lp-ease-enter) 0.25s backwards;
+}
+
+/* ── Deep-space atmosphere. A faint field of distant stars and two wisps of
+   iris / indigo nebula, so the star hangs in space instead of on a flat
+   panel. ── */
+.landing-hsun__space {
+    position: absolute;
+    inset: -10%;
+    border-radius: 50%;
+    background-image:
+        radial-gradient(1.6px 1.6px at 14% 20%, hsla(0, 0%, 100%, 0.75), transparent 60%),
+        radial-gradient(1.3px 1.3px at 80% 12%, hsla(268, 40%, 92%, 0.6), transparent 60%),
+        radial-gradient(1.1px 1.1px at 68% 82%, hsla(0, 0%, 100%, 0.55), transparent 60%),
+        radial-gradient(1.5px 1.5px at 22% 76%, hsla(276, 50%, 92%, 0.6), transparent 60%),
+        radial-gradient(1px 1px at 92% 52%, hsla(0, 0%, 100%, 0.5), transparent 60%),
+        radial-gradient(1px 1px at 8% 48%, hsla(268, 40%, 90%, 0.45), transparent 60%),
+        radial-gradient(1.2px 1.2px at 48% 6%, hsla(0, 0%, 100%, 0.5), transparent 60%),
+        radial-gradient(1px 1px at 40% 94%, hsla(276, 50%, 90%, 0.45), transparent 60%);
+    -webkit-mask: radial-gradient(circle, transparent 26%, #000 52%, #000 80%, transparent 100%);
+            mask: radial-gradient(circle, transparent 26%, #000 52%, #000 80%, transparent 100%);
+    opacity: 0.55;
+    animation: landing-hsun-twinkle 7s ease-in-out infinite;
+}
+.landing-hsun__nebula {
+    position: absolute;
+    inset: -22%;
+    background:
+        radial-gradient(42% 38% at 72% 28%, hsla(288, 62%, 52%, 0.12), transparent 70%),
+        radial-gradient(46% 44% at 24% 74%, hsla(243, 66%, 56%, 0.1), transparent 72%);
+    filter: blur(16px);
+    animation: landing-hsun-nebula 24s ease-in-out infinite alternate;
+}
+
+/* ── Ambient halo: only a faint pool of light behind the dial so it sits in the
+   scene, not a bloom. Restrained on purpose (a glowing centre reads as stock
+   art). ── */
+.landing-hsun__corona {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--R) * 1.85);
+    height: calc(var(--R) * 1.85);
+    margin: calc(var(--R) * -0.925) 0 0 calc(var(--R) * -0.925);
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        hsla(272, 74%, 60%, 0.13) 0%,
+        hsla(268, 66%, 50%, 0.07) 34%,
+        hsla(266, 60%, 46%, 0.028) 55%,
+        transparent 70%);
+    filter: blur(7px);
+    mix-blend-mode: screen;
+    animation: landing-hsun-corona 9s ease-in-out infinite;
+}
+
+/* ── Orbital paths: soft luminous tracks, brightest on the near (lower) arc and
+   fading around the far side, so the light catches the orbit rather than
+   drafting a hard ring. ── */
+.landing-hsun__path {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    filter: drop-shadow(0 0 5px hsla(268, 82%, 72%, 0.35));
+}
+.landing-hsun__path--outer {
+    width: calc(var(--R) * 2);
+    height: calc(var(--R) * 2);
+    background: conic-gradient(from 0deg,
+        hsla(268, 74%, 82%, 0) 34deg,
+        hsla(272, 90%, 87%, 0.72) 166deg,
+        hsla(277, 88%, 86%, 0.82) 180deg,
+        hsla(268, 84%, 84%, 0.66) 194deg,
+        hsla(268, 74%, 82%, 0) 326deg,
+        transparent 360deg);
+    -webkit-mask: radial-gradient(circle, transparent calc(100% - 2px), #000 calc(100% - 2px));
+            mask: radial-gradient(circle, transparent calc(100% - 2px), #000 calc(100% - 2px));
+    filter: drop-shadow(0 0 8px hsla(268, 86%, 74%, 0.45));
+}
+.landing-hsun__path--inner {
+    width: calc(var(--R) * 1.16);
+    height: calc(var(--R) * 1.16);
+    background: conic-gradient(from 0deg,
+        hsla(268, 70%, 80%, 0) 60deg,
+        hsla(272, 82%, 84%, 0.28) 180deg,
+        hsla(268, 70%, 80%, 0) 300deg,
+        transparent 360deg);
+    -webkit-mask: radial-gradient(circle, transparent calc(100% - 1.5px), #000 calc(100% - 1.5px));
+            mask: radial-gradient(circle, transparent calc(100% - 1.5px), #000 calc(100% - 1.5px));
+    opacity: 0.7;
+}
+
+/* ── The week orbiting the star. The group turns once per --orbit; each seat
+   counter-turns at the same rate to stay upright and pulses through depth
+   (scale, light, focus) phased by its seat index --i, so the near seat is
+   always the brightest and largest and the far seat recedes. ── */
+.landing-hsun__orbit {
+    position: absolute;
+    inset: 0;
+    animation: landing-hsun-spin var(--orbit) linear infinite;
+}
+.landing-hsun__day {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform:
+        translate(-50%, -50%)
+        rotate(var(--a))
+        translateY(calc(var(--R) * -1))
+        rotate(calc(var(--a) * -1));
+}
+/* Counter-turn: keeps the seat upright as the group revolves. */
+.landing-hsun__body {
+    display: block;
+    animation: landing-hsun-counter var(--orbit) linear infinite;
+}
+/* Depth pulse: peaks (near, large, bright, sharp) at 50%, aligned to the near
+   arc by the per-seat delay; troughs small, dim, and soft on the far side. The
+   base pose (reduced motion / no animation) shows every seat evenly. */
+.landing-hsun__depth {
+    display: block;
+    opacity: 0.92;
+    animation: landing-hsun-depth var(--orbit) ease-in-out infinite;
+    animation-delay: calc(var(--i) * var(--orbit) * -1 / 7);
+}
+.landing-hsun__dot {
+    display: block;
+    width: 10px;
+    height: 10px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: var(--c, var(--lp-primary));
+    box-shadow:
+        0 0 10px color-mix(in srgb, var(--c, var(--lp-primary)) 70%, transparent),
+        0 0 3px hsla(0, 0%, 100%, 0.45);
+}
+.landing-hsun__label {
+    display: block;
+    margin-top: 6px;
+    font-size: 0.64rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-align: center;
+    white-space: nowrap;
+    color: var(--lp-text-muted);
+}
+/* Today: the lit day. A larger core, a hairline halo ring, and a soft pulse, so
+   it stays the clear accent wherever it rides the wheel. */
+.landing-hsun__day--on .landing-hsun__dot {
+    width: 13px;
+    height: 13px;
+    box-shadow:
+        0 0 0 3px hsla(268, 70%, 72%, 0.22),
+        0 0 18px var(--c, var(--lp-primary)),
+        0 0 6px hsla(0, 0%, 100%, 0.8);
+    animation: landing-hsun-todaypulse 3.2s ease-in-out infinite;
+}
+.landing-hsun__day--on .landing-hsun__label {
+    color: var(--lp-text);
+    text-shadow: 0 0 12px hsla(268, 80%, 70%, 0.6);
+}
+
+/* ── The centre: a PRECISE TIME DIAL, not a glowing orb. The week orbits time
+   itself ("Stop arranging time. Start directing it."). Watch-grade linework: a
+   dark, faintly-lit dial with a hairline bezel, fine minute ticks with brighter
+   hour ticks (12 o'clock the single iris accent), thin hands set to the real
+   current time, and a slow iris sweep hand for a living second. It lies on the
+   tilted plane (a dial seen at a slight angle), so it stays coplanar with the
+   orbit. No bloom, no volume: restraint is what reads as human, not machine. ── */
+.landing-hsun__core {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: calc(var(--R) * 0.68);
+    height: calc(var(--R) * 0.68);
+    margin: calc(var(--R) * -0.34) 0 0 calc(var(--R) * -0.34);
+    border-radius: 50%;
+}
+/* The dial face: borderless. A soft dark vignette under the ticks that dissolves
+   into the scene at the edge (no ring, no rim), so the ticks and hands read as
+   engraving that floats, not a bezelled object. */
+.landing-hsun__dial {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 50% 46%,
+        hsla(268, 26%, 19%, 0.5) 0%,
+        hsla(270, 40%, 12%, 0.42) 58%,
+        hsla(272, 44%, 9%, 0.14) 84%,
+        transparent 100%);
+}
+.landing-hsun__clock { display: block; width: 100%; height: 100%; }
+/* The sweep hand: one thin iris line, faint at the pivot and brighter at the tip,
+   turning once a minute. The single moving part of the dial. */
+.landing-hsun__now {
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    width: 1.5px;
+    height: 40%;
+    margin-left: -0.75px;
+    transform-origin: bottom center;
+    border-radius: 2px;
+    background: linear-gradient(to top,
+        hsla(268, 74%, 66%, 0) 0%,
+        hsla(268, 78%, 68%, 0.7) 32%,
+        hsla(268, 84%, 76%, 0.92) 100%);
+    animation: landing-hsun-sweep 60s linear infinite;
+}
+
+/* Entrance choreography: media leads, headline, lede, controls, cue last.
+   Fill mode is BACKWARDS, never both: a forwards fill would freeze the
+   final keyframe onto these elements forever and override every
+   scroll-driven declaration below (the cue's exit fade was silently dead
+   under the old `both`). */
+.landing-hero__e1 { animation: landing-rise 0.7s var(--lp-ease-enter) 0.25s backwards; }
+.landing-hero__e2 { animation: landing-rise 0.8s var(--lp-ease-enter) 0.4s backwards; }
+.landing-hero__e2b { animation: landing-rise-sub 0.8s var(--lp-ease-enter) 0.5s backwards; }
+.landing-hero__e3 { animation: landing-rise 0.8s var(--lp-ease-enter) 0.65s backwards; }
+.landing-hero__e4 { animation: landing-rise 0.8s var(--lp-ease-enter) 0.85s backwards; }
+.landing-hero__e5 { animation: landing-cue-fade 1s ease 1.6s backwards; }
+
+.landing-hero__title {
+    margin: 0 auto 20px;
+    font-size: clamp(2.8rem, 7vw, 5.4rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+}
+
+.landing-hero__lede {
+    font-size: 1.2rem;
+    color: var(--lp-text-muted);
+    max-width: 600px;
+    margin: 0 auto 36px;
+    line-height: 1.7;
+}
+
+.landing-hero__cta-row {
+    display: flex;
+    justify-content: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+/* Scroll cue: the explicit invitation that the page continues (T11). */
+.landing-hero__cue {
+    position: absolute;
+    bottom: 2rem;
+    left: 50%;
+    margin-left: -13px;
+    width: 26px;
+    height: 42px;
+    border: 2px solid hsla(268, 30%, 60%, 0.4);
+    border-radius: 14px;
+    opacity: calc(0.9 - var(--exit) * 6);
+}
+
+.landing-hero__cue-dot {
+    position: absolute;
+    left: 50%;
+    top: 7px;
+    width: 4px;
+    height: 8px;
+    margin-left: -2px;
+    border-radius: 3px;
+    background: var(--lp-primary-soft);
+    animation: landing-cue 1.8s ease-in-out 0.4s infinite;
+}
+
+/* ═══ Scene 3 · SCHEDULE: pose morph (T12) ═══════════════════════════
+   Base (no JS / mobile / reduced motion): static composed final pose.
+   Desktop + .has-motion: 300vh runway, sticky stage, .pose2 flip. */
+.landing-week {
+    position: relative;
+    background: hsl(268, 26%, 5%);
+    border-top: 1px solid var(--lp-border);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-week__stage {
+    position: relative;
+    overflow: hidden;
+    padding: 3rem 0 3.5rem;
+}
+
+.landing-week__dawn {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 85% 62% at 50% 108%,
+        hsla(268, 62%, 58%, 0.24), hsla(243, 65%, 60%, 0.07) 55%, transparent 78%);
+    /* The scene light follows the calendar's colorway cycle below. */
+    animation: landing-wk-rainbow 8s linear infinite;
+}
+
+/* ── The app mock (the same asset in both poses) ── */
+.landing-week__media {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.landing-week__app {
+    width: min(64rem, 94%);
+    height: 24rem;
+    display: flex;
+    flex-direction: column;
+    border-radius: 18px;
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg);
+    box-shadow: 0 30px 80px hsla(268, 40%, 4%, 0.6), 0 0 90px hsla(268, 62%, 58%, 0.1);
+    overflow: hidden;
+    /* User-directed colorway cycle: the demo re-themes itself continuously
+       through the full hue wheel (the colorways-scene story, made ambient).
+       Time-based on purpose, so it runs in BOTH poses and with JS off;
+       reduced motion stills it at the iris pose. Text is low-saturation so
+       legibility never moves. Canon note: hue-rotate deliberately joins
+       brightness in the allowed continuous-filter set for colorway
+       demonstrations. */
+    animation: landing-wk-rainbow 8s linear infinite;
+}
+
+.landing-week__appbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: var(--lp-bg-card);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+/* The mock is an Alectrone surface, not a fake macOS window: the brand mark
+   sits where traffic-light dots would have been. */
+.landing-week__mark {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.landing-week__month {
+    margin-left: 4px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--lp-text);
+}
+
+.landing-week__avatars {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+}
+
+.landing-week__avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    margin-left: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--lp-bg-card);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 30%, var(--lp-bg));
+    color: var(--lp-text);
+    font-size: 0.55rem;
+    font-weight: 700;
+    transition: opacity var(--lp-motion-scene) ease, transform var(--lp-motion-scene) var(--lp-ease-enter);
+}
+
+.landing-week__avatar--more {
+    background: var(--lp-bg-card-hover);
+    color: var(--lp-text-muted);
+}
+
+.landing-week__grid {
+    position: relative;
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.landing-week__col {
+    position: relative;
+    border-right: 1px solid hsla(268, 16%, 18%, 0.6);
+    padding-top: 30px;
+    /* Faint hour rules give the canvas its texture. */
+    background-image: repeating-linear-gradient(180deg,
+        hsla(268, 10%, 92%, 0.035) 0, hsla(268, 10%, 92%, 0.035) 1px,
+        transparent 1px, transparent 2.6rem);
+    background-position: 0 30px;
+    background-size: 100% calc(100% - 30px);
+    background-repeat: no-repeat;
+}
+.landing-week__col:last-child { border-right: none; }
+
+.landing-week__col--wknd {
+    background-color: hsla(268, 16%, 13%, 0.35);
+}
+
+.landing-week__day {
+    position: absolute;
+    top: 7px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+
+/* Events position off --t (top %) and --h (height %) of the column body. */
+/* Vivid category chips with real calendar anatomy: an inner-lit gradient
+   wash, a 1px tinted border, the orb dot on the title, a time range, and
+   (on the tall blocks) a meta line or attendee chips. Detail follows
+   height, the way a real week looks. No edge stripes (identity rule). */
+.landing-week__ev {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: calc(30px + (100% - 30px) * var(--t) / 100);
+    height: calc((100% - 30px) * var(--h) / 100);
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 5px 8px 4px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--c, var(--lp-primary)) 42%, transparent);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--c, var(--lp-primary)) 34%, transparent),
+        color-mix(in srgb, var(--c, var(--lp-primary)) 20%, transparent));
+    box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c, var(--lp-primary)) 28%, transparent),
+                0 2px 12px hsla(268, 40%, 4%, 0.3);
+    line-height: 1.3;
+    overflow: hidden;
+    transition: opacity var(--lp-motion-scene) ease, transform var(--lp-motion-scene) var(--lp-ease-enter);
+}
+
+.landing-week__ev-title {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 42%, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.landing-week__ev-title::before {
+    content: "";
+    flex-shrink: 0;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 5px;
+    background: var(--c, var(--lp-primary));
+    box-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--lp-primary)) 55%, transparent);
+}
+
+.landing-week__ev-time {
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 35%, hsl(268, 10%, 78%));
+    white-space: nowrap;
+}
+
+.landing-week__ev-meta {
+    font-size: 0.58rem;
+    color: var(--lp-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.landing-week__ev-people {
+    display: flex;
+    margin-top: auto;
+    padding-top: 2px;
+}
+
+.landing-week__ev-people span {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: -4px;
+    border: 1.5px solid hsla(268, 20%, 9%, 0.9);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 55%, var(--lp-bg));
+}
+
+/* The now line: the one live element in the mock, a lit iris rule with
+   its dot at the left rail. */
+.landing-week__now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    z-index: 2;
+    top: calc(30px + (100% - 30px) * var(--t) / 100);
+    height: 2px;
+    border-radius: 1px;
+    pointer-events: none;
+    /* Softened to read as light, not a drawn rule: fades at both ends and
+       carries a wide bloom (handbook T23 now-line footlight). */
+    background: linear-gradient(90deg, transparent, var(--lp-primary) 14%,
+        color-mix(in srgb, var(--lp-primary) 30%, transparent) 78%, transparent);
+    box-shadow: 0 0 16px hsla(268, 62%, 58%, 0.35);
+}
+
+/* Footlight: a soft wide band of light spread around the live line, so the
+   present moment is the brightest place on the stage (T17 one-hero, T23). */
+.landing-week__now::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 150px;
+    transform: translateY(-50%);
+    background: radial-gradient(ellipse 62% 100% at 46% 50%, hsla(268, 72%, 62%, 0.2), transparent 74%);
+    filter: blur(7px);
+    mix-blend-mode: screen;
+    pointer-events: none;
+}
+
+.landing-week__now::before {
+    content: "";
+    position: absolute;
+    left: -2px;
+    top: -3px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--lp-primary);
+    box-shadow: 0 0 8px hsla(268, 62%, 58%, 0.8);
+}
+
+/* ── Captions ── */
+.landing-week__band {
+    position: relative;
+    padding: 2.25rem 24px 0;
+    text-align: center;
+}
+
+.landing-week__cap--1 { display: none; }
+
+.landing-week__title {
+    margin: 0 0 0.5rem;
+    font-size: clamp(1.7rem, 3.4vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-week__desc {
+    margin: 0 auto;
+    max-width: 34rem;
+    font-size: 1.02rem;
+    color: var(--lp-text-muted);
+}
+
+/* The team layer's awkward collision: one meeting shoved sideways the way
+   real calendars render overlaps. Arrives with pose 2. */
+.landing-week__ev--nudge {
+    left: 42%;
+    right: 3px;
+    z-index: 1;
+}
+
+/* ═══ T23 lit stage: theater light for the full-bleed pose ══════════════════
+   The full-bleed team canvas (pose 2) is lit like a stage instead of running
+   flat to the frame: two overhead beams, a theater vignette, the existing
+   __dawn as a floor pool, the now-line footlight above, and pose-2 chips that
+   catch the light. Beams and vignette are decorative overlays scoped to the
+   media box and clipped by the stage's overflow (no body overflow). All light
+   is screen-blended luminance (T17). Base CSS renders the fully-lit final
+   pose; the .has-motion block ramps every layer on --p so the pose morph
+   doubles as a lighting cue; reduced motion keeps the lit pose, static. */
+.landing-week__rig {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    mix-blend-mode: screen;
+}
+
+.landing-week__beam {
+    position: absolute;
+    top: -8%;
+    width: 26%;
+    height: 108%;
+    background-color: hsl(268, 64%, 60%);
+    clip-path: polygon(40% 0, 60% 0, 100% 100%, 0 100%);
+    /* Static blur is the reduced-motion fallback; the animation folds the same
+       blur in so cycling the hue never drops it. */
+    filter: blur(34px);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 88%);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.55), transparent 88%);
+    opacity: 0.42;
+    animation: landing-wk-beam 8s linear infinite;
+}
+.landing-week__beam--l { left: 10%; transform: rotate(15deg); transform-origin: top center; }
+.landing-week__beam--r { right: 10%; transform: rotate(-15deg); transform-origin: top center; }
+
+.landing-week__vignette {
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    pointer-events: none;
+    background:
+        radial-gradient(ellipse 80% 86% at 50% 44%, transparent 55%, hsla(268, 40%, 3%, 0.5) 100%),
+        linear-gradient(180deg, hsla(268, 40%, 3%, 0.32), transparent 16%);
+}
+
+/* ═══ Scene 4 · VIEWS: the horizontal film ═══════════════════════════
+   A true overflow-x scroller (native scrolling, proximity snap, visible
+   scrollbar). The engine adds wheel mapping with boundary release and
+   publishes .at-start / .at-end for the edge fades; with JS off or
+   reduced motion this is a plain native scroller. */
+.landing-views {
+    position: relative;
+    background: var(--lp-bg);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-views__stage {
+    padding: 6.5rem 0 6rem;
+}
+
+.landing-views__head {
+    max-width: 40rem;
+    margin: 0 auto 2.5rem;
+    padding: 0 24px;
+    text-align: center;
+}
+
+.landing-views__title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.9rem, 3.8vw, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-views__desc {
+    margin: 0 auto;
+    max-width: 32rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--lp-text-muted);
+}
+
+.landing-views__stripwrap {
+    position: relative;
+}
+
+.landing-views__strip {
+    display: flex;
+    gap: 20px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1rem max(24px, calc((100% - var(--lp-max-width)) / 2)) 1.5rem;
+    scroll-snap-type: x proximity;
+    /* Snap positions align panels with the padded edge, so the strip's
+       resting position (scrollLeft 0) is itself a snap position. */
+    scroll-padding-inline: max(24px, calc((100% - var(--lp-max-width)) / 2));
+    scrollbar-width: thin;
+    scrollbar-color: var(--lp-primary-muted) transparent;
+}
+
+/* Once wheel input drives the strip, snapping stands down for good:
+   proximity snap swallows notch-sized wheel deltas (it yanks each settled
+   notch back to the panel boundary). Touch and the scrollbar keep snap
+   until a wheel is used. */
+.landing-views__strip.wheeling {
+    scroll-snap-type: none;
+}
+
+.landing-views__strip::-webkit-scrollbar { height: 8px; }
+.landing-views__strip::-webkit-scrollbar-track { background: transparent; }
+.landing-views__strip::-webkit-scrollbar-thumb {
+    background: var(--lp-primary-muted);
+    border-radius: 999px;
+}
+.landing-views__strip::-webkit-scrollbar-thumb:hover { background: var(--lp-primary); }
+
+/* Edge fades: pure affordance, engine-gated (the engine publishes
+   .at-start / .at-end). With JS off or reduced motion the visible
+   scrollbar is the affordance and the fades stay down. */
+.landing-views__fade {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 72px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--lp-motion-base) ease;
+}
+.landing-views__fade--l {
+    left: 0;
+    background: linear-gradient(90deg, var(--lp-bg), transparent);
+}
+.landing-views__fade--r {
+    right: 0;
+    background: linear-gradient(270deg, var(--lp-bg), transparent);
+}
+.landing.has-motion .landing-views__fade { opacity: 1; }
+.landing.has-motion .landing-views__strip.at-start ~ .landing-views__fade--l { opacity: 0; }
+.landing.has-motion .landing-views__strip.at-end ~ .landing-views__fade--r { opacity: 0; }
+
+.landing-views__panel {
+    flex: 0 0 auto;
+    width: min(21rem, 78vw);
+    scroll-snap-align: start;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 18px;
+    border-radius: var(--lp-radius-lg);
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg-card);
+    transition: border-color var(--lp-motion-base) ease, filter var(--lp-motion-base) ease,
+                box-shadow var(--lp-motion-base) ease;
+}
+
+/* Hover reads as lit, not repainted (T17). */
+.landing-views__panel:hover {
+    border-color: hsla(268, 50%, 50%, 0.3);
+    filter: brightness(1.06);
+    box-shadow: 0 10px 36px hsla(268, 40%, 10%, 0.35);
+}
+
+.landing-views__name {
+    margin-top: 10px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--lp-text);
+}
+
+.landing-views__note {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--lp-text-muted);
+}
+
+.landing-views__hint {
+    margin: 0.75rem auto 0;
+    padding: 0 24px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--lp-text-muted);
+}
+
+/* ── The seven mocks. Decorative, aria-hidden, orb dots for category color
+   (never edge stripes). Each mock reads like a real calendar surface: a
+   dated header, day/date columns, a live "now" line, a month grid with the
+   current day lit. Event geometry rides the established inline custom-property
+   pattern (--c / --t / --h, plus --l/--w). All date-bearing nodes carry
+   [data-td*] markers so landing-scenes.js can re-derive them from the
+   visitor's local clock. ── */
+.landing-views__mock {
+    position: relative;
+    height: 11rem;
+    border-radius: 10px;
+    border: 1px solid hsla(268, 16%, 18%, 0.8);
+    background: var(--lp-bg);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Shared dated header band (day / month / year / timeline). */
+.lv-hd {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    flex-shrink: 0;
+    padding: 5px 9px;
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.7);
+    background: hsla(268, 16%, 13%, 0.5);
+    font-size: 0.62rem;
+    color: var(--lp-text-muted);
+}
+.lv-hd__dow {
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lp-text);
+}
+.lv-hd__num {
+    font-size: 0.9rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--lp-text);
+    font-variant-numeric: tabular-nums;
+}
+.lv-hd__mon { color: var(--lp-text-muted); }
+.lv-hd__title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--lp-text);
+}
+.lv-hd__tag {
+    margin-left: auto;
+    padding: 1px 7px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--lp-primary) 35%, transparent);
+    background: color-mix(in srgb, var(--lp-primary) 22%, transparent);
+    color: var(--lp-primary-soft);
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+/* All-day strip (day view): the banner row a real calendar reserves above
+   the timed grid, holding an untimed event chip. */
+.lv-allday {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    padding: 3px 9px;
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.6);
+    background: hsla(268, 16%, 13%, 0.35);
+}
+.lv-allday__tag {
+    flex-shrink: 0;
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+.lv-allday__chip {
+    flex: 1;
+    min-width: 0;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--c, var(--lp-primary)) 40%, transparent);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 22%, transparent);
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 44%, #fff);
+    font-size: 0.5rem;
+    font-weight: 700;
+    line-height: 1.5;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Day: hour gutter + track with timed chips and a glowing now-line. */
+.lv-day__body {
+    flex: 1;
+    display: flex;
+    min-height: 0;
+    background-image: repeating-linear-gradient(
+        180deg, transparent 0, transparent 1.6rem,
+        hsla(268, 10%, 92%, 0.05) 1.6rem, hsla(268, 10%, 92%, 0.05) calc(1.6rem + 1px));
+}
+.lv-day__gutter {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 4px 5px 6px;
+    border-right: 1px solid hsla(268, 16%, 18%, 0.6);
+    font-size: 0.48rem;
+    font-weight: 600;
+    color: var(--lp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.lv-day__track {
+    position: relative;
+    flex: 1;
+    min-width: 0;
+}
+.lv-day__now {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(var(--t, 40) * 1%);
+    height: 0;
+    border-top: 1.5px solid var(--lp-primary);
+    box-shadow: 0 0 8px hsla(268, 62%, 58%, 0.5);
+    z-index: 3;
+}
+.lv-day__now::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: -3.5px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--lp-primary);
+    box-shadow: 0 0 8px hsla(268, 62%, 58%, 0.7);
+}
+
+.lv-ev {
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    top: calc(var(--t) * 1%);
+    height: calc(var(--h) * 1%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    padding: 2px 7px;
+    border-radius: 6px;
+    border: 1px solid color-mix(in srgb, var(--c, var(--lp-primary)) 40%, transparent);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 24%, transparent);
+    overflow: hidden;
+}
+.lv-ev__t {
+    display: block;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 42%, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lv-ev__t::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: var(--c, var(--lp-primary));
+    box-shadow: 0 0 6px color-mix(in srgb, var(--c, var(--lp-primary)) 55%, transparent);
+}
+.lv-ev__m {
+    display: block;
+    font-size: 0.5rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 26%, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Week and work week: dated day columns with abstract blocks. */
+.lv--week,
+.lv--wweek {
+    flex-direction: row;
+}
+
+.lv-col {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border-right: 1px solid hsla(268, 16%, 18%, 0.6);
+}
+.lv-col:last-child { border-right: none; }
+.lv-col--wknd { background: hsla(268, 16%, 13%, 0.35); }
+.lv-col--today { background: hsla(268, 42%, 32%, 0.14); }
+
+.lv-colhd {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 4px 0 3px;
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.6);
+    line-height: 1.05;
+}
+.lv-colhd__d {
+    font-size: 0.44rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+.lv-colhd__n {
+    font-style: normal;
+    font-size: 0.66rem;
+    font-weight: 800;
+    color: var(--lp-text);
+    font-variant-numeric: tabular-nums;
+}
+.lv-col--today .lv-colhd__d { color: var(--lp-primary-soft); }
+.lv-col--today .lv-colhd__n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.05rem;
+    height: 1.05rem;
+    border-radius: 999px;
+    background: var(--lp-primary);
+    color: #fff;
+    box-shadow: 0 0 10px hsla(268, 62%, 58%, 0.5);
+}
+
+.lv-col__body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    background-image: repeating-linear-gradient(
+        180deg, transparent 0, transparent 1.4rem,
+        hsla(268, 10%, 92%, 0.04) 1.4rem, hsla(268, 10%, 92%, 0.04) calc(1.4rem + 1px));
+}
+
+/* The "now" line, drawn only in the column that is today (JS moves the
+   today class to the visitor's weekday; the shared [data-td-nowline] --t is
+   the same 07:00-21:00 fraction the day view uses). */
+.lv-col__now {
+    display: none;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: calc(var(--t, 40) * 1%);
+    height: 0;
+    border-top: 1.5px solid var(--lp-primary);
+    box-shadow: 0 0 6px hsla(268, 62%, 58%, 0.5);
+    z-index: 4;
+    pointer-events: none;
+}
+.lv-col--today .lv-col__now { display: block; }
+.lv-col__now::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: -2.5px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--lp-primary);
+    box-shadow: 0 0 6px hsla(268, 62%, 58%, 0.7);
+}
+
+.lv-blk {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    top: calc(var(--t) * 1%);
+    height: calc(var(--h) * 1%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 1px 4px;
+    border-radius: 3px;
+    border: 1px solid color-mix(in srgb, var(--c, var(--lp-primary)) 40%, transparent);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 28%, transparent);
+    overflow: hidden;
+}
+.lv-blk__t {
+    font-size: 0.48rem;
+    font-weight: 700;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 44%, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lv-blk__m {
+    font-style: normal;
+    font-size: 0.42rem;
+    font-weight: 600;
+    line-height: 1.1;
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 26%, #fff);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Month: a real Monday-start grid, current day lit, event days barred. */
+.lv-month__dow {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    flex-shrink: 0;
+    padding: 3px 0 2px;
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.5);
+    font-size: 0.42rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    text-align: center;
+    color: var(--lp-text-muted);
+}
+.lv-month__grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+    min-height: 0;
+}
+.lv-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-right: 1px solid hsla(268, 16%, 18%, 0.3);
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.3);
+}
+.lv-cell:nth-child(7n) { border-right: none; }
+.lv-cell__n {
+    position: relative;
+    font-style: normal;
+    font-size: 0.5rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--lp-text);
+    font-variant-numeric: tabular-nums;
+}
+.lv-cell--out .lv-cell__n {
+    color: var(--lp-text-muted);
+    opacity: 0.4;
+}
+.lv-cell--today .lv-cell__n {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.95rem;
+    height: 0.95rem;
+    border-radius: 999px;
+    background: var(--lp-primary);
+    color: #fff;
+    box-shadow: 0 0 8px hsla(268, 62%, 58%, 0.5);
+}
+/* Event marker: a little event bar (as a real month cell shows), not a dot. */
+.lv-cell__dot {
+    position: absolute;
+    bottom: 2.5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 62%;
+    max-width: 1.15rem;
+    height: 2.5px;
+    border-radius: 2px;
+    background: var(--c, var(--lp-primary));
+    box-shadow: 0 0 4px color-mix(in srgb, var(--c, var(--lp-primary)) 45%, transparent);
+    opacity: 0;
+}
+.lv-cell--ev .lv-cell__dot { opacity: 1; }
+.lv-cell--ev.lv-cell--today .lv-cell__dot { display: none; }
+
+/* Year: twelve real mini-month grids (correct first-weekday offset per
+   month), the current month lit and today's cell marked inside it. */
+.lv-year__grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 5px;
+    padding: 7px 8px;
+    min-height: 0;
+}
+
+.lv-mini {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    min-height: 0;
+    padding: 3px 4px 4px;
+    border: 1px solid hsla(268, 16%, 18%, 0.7);
+    border-radius: 5px;
+    background: hsla(268, 16%, 13%, 0.35);
+    overflow: hidden;
+}
+.lv-mini__name {
+    font-size: 0.42rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+.lv-mini__grid {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 1fr;
+    gap: 1px;
+    min-height: 0;
+    align-content: start;
+}
+.lv-md {
+    align-self: center;
+    justify-self: center;
+    width: 2.5px;
+    height: 2.5px;
+    border-radius: 50%;
+    background: hsla(268, 10%, 82%, 0.26);
+}
+.lv-md--pad { background: transparent; }
+.lv-md--today {
+    width: 4px;
+    height: 4px;
+    background: var(--lp-primary);
+    box-shadow: 0 0 5px hsla(268, 62%, 58%, 0.7);
+}
+
+.lv-mini--now {
+    border-color: hsla(268, 62%, 68%, 0.55);
+    background: hsla(268, 42%, 32%, 0.16);
+    box-shadow: 0 0 12px hsla(268, 62%, 58%, 0.18);
+}
+.lv-mini--now .lv-mini__name { color: var(--lp-primary-soft); }
+.lv-mini--now .lv-md { background: hsla(268, 30%, 82%, 0.42); }
+
+/* Agenda: events grouped under day headings (Today / Tomorrow / weekday +
+   date), each row a time, title, and a location or duration, the way a real
+   schedule view reads. */
+.lv--agenda {
+    justify-content: flex-start;
+    gap: 6px;
+    padding: 8px 10px;
+    overflow: hidden;
+}
+
+.lv-ag__group {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.lv-ag__day {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+    padding-bottom: 1px;
+    border-bottom: 1px solid hsla(268, 16%, 18%, 0.6);
+}
+.lv-ag__rel {
+    font-style: normal;
+    font-size: 0.52rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    color: var(--lp-text);
+}
+.lv-ag__date {
+    font-style: normal;
+    font-size: 0.46rem;
+    font-weight: 600;
+    color: var(--lp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.lv-ag__ev {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 2px 2px 2px 9px;
+    font-size: 0.56rem;
+    white-space: nowrap;
+    overflow: hidden;
+}
+.lv-ag__ev::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 3px;
+    bottom: 3px;
+    width: 2.5px;
+    border-radius: 2px;
+    background: var(--c, var(--lp-primary));
+    box-shadow: 0 0 5px color-mix(in srgb, var(--c, var(--lp-primary)) 45%, transparent);
+}
+.lv-ag__t {
+    flex-shrink: 0;
+    font-style: normal;
+    font-size: 0.52rem;
+    font-weight: 700;
+    color: var(--lp-text);
+    font-variant-numeric: tabular-nums;
+}
+.lv-ag__x {
+    font-weight: 600;
+    color: var(--lp-text);
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lv-ag__m {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding-left: 6px;
+    font-style: normal;
+    text-decoration: none;
+    font-size: 0.46rem;
+    font-weight: 600;
+    color: var(--lp-text-muted);
+}
+
+/* Timeline: dated header + resource lanes with span bars. */
+.lv-tline__axis {
+    margin-left: auto;
+    display: flex;
+    gap: 9px;
+    font-size: 0.46rem;
+    font-weight: 600;
+    color: var(--lp-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+.lv-tline__axis i { font-style: normal; }
+.lv-tline__lanes {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    gap: 5px;
+    padding: 8px 10px;
+    min-height: 0;
+}
+
+.lv-lane {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-height: 0;
+}
+.lv-lane__label {
+    flex: 0 0 2.5rem;
+    font-style: normal;
+    font-size: 0.46rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--lp-text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.lv-lane__track {
+    position: relative;
+    flex: 1;
+    align-self: stretch;
+    min-width: 0;
+    border-radius: 4px;
+    background-color: hsla(268, 16%, 13%, 0.5);
+    background-image: linear-gradient(90deg, hsla(268, 10%, 92%, 0.06) 1px, transparent 1px);
+    background-size: 20% 100%;
+}
+
+.lv-bar {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: calc(var(--l) * 1%);
+    width: calc(var(--w) * 1%);
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--c, var(--lp-primary)) 45%, transparent);
+    background: color-mix(in srgb, var(--c, var(--lp-primary)) 30%, transparent);
+    color: color-mix(in srgb, var(--c, var(--lp-primary)) 42%, #fff);
+    font-size: 0.48rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Vertical "now" line drawn in every lane track; the tracks align, so the
+   per-lane marks read as one continuous line across the resource schedule. */
+.lv-tline__now {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: calc(var(--x, 50) * 1%);
+    width: 0;
+    border-left: 1.5px solid hsla(268, 62%, 68%, 0.65);
+    box-shadow: 0 0 6px hsla(268, 62%, 58%, 0.45);
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* ═══ Scene 5 · BOOKING (T3 trip-wire performance) ═══ */
+.landing-booking {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    padding: 5rem 24px;
+    background: var(--lp-bg);
+    /* Clips the stagebox spotlight glow so it can never widen the body. */
+    overflow: hidden;
+}
+
+.landing-booking__grid {
+    max-width: var(--lp-max-width);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 56px;
+    align-items: center;
+}
+
+.landing-booking__title {
+    margin: 0 0 1rem;
+    font-size: clamp(1.9rem, 3.8vw, 2.9rem);
+    font-weight: 800;
+    line-height: 1.12;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-booking__desc {
+    margin: 0 0 1.5rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--lp-text-muted);
+    max-width: 30rem;
+}
+
+.landing-booking__points {
+    list-style: none;
+    margin: 0 0 2rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.landing-booking__points li {
+    position: relative;
+    padding-left: 24px;
+    font-size: 0.95rem;
+    color: var(--lp-text);
+}
+
+/* Checks are Alectrone stroke icons (masked SVG), never dingbat text glyphs. */
+.landing-booking__points li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.3em;
+    width: 0.85em;
+    height: 0.85em;
+    background: var(--lp-primary-soft);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* The stage: a public booking page that demos itself. On scroll it steals
+   focus (engine publishes --vp): the card lifts, brightens, and its iris
+   glow blooms as it crosses the viewport center, then settles. The base
+   and reduced-motion pose (--vp 0.5) is the lit spotlight pose. */
+.landing-booking__stagebox {
+    --vp: 0.5;
+    --peak: calc(1 - max(2 * var(--vp) - 1, 1 - 2 * var(--vp)));
+    position: relative;
+    display: flex;
+    justify-content: center;
+    transform: scale(calc(0.97 + var(--peak) * 0.05));
+    filter: brightness(calc(0.94 + var(--peak) * 0.14));
+}
+
+.landing-booking__stagebox::after {
+    content: "";
+    position: absolute;
+    inset: -3.5rem;
+    z-index: -1;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, hsla(268, 62%, 58%, 0.22), transparent 70%);
+    opacity: var(--peak);
+}
+
+.landing-booking__card {
+    position: relative;
+    width: min(24rem, 100%);
+    padding: 24px;
+    border-radius: var(--lp-radius-lg);
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg-card);
+    box-shadow: 0 24px 70px hsla(268, 40%, 4%, 0.55), 0 0 70px hsla(268, 62%, 58%, 0.08);
+    overflow: hidden;
+}
+
+.landing-booking__head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    margin-bottom: 18px;
+}
+
+.landing-booking__who {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: var(--lp-text);
+}
+
+.landing-booking__meta {
+    font-size: 0.8rem;
+    color: var(--lp-text-muted);
+}
+
+.landing-booking__daylabel {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+    margin-bottom: 10px;
+}
+
+.landing-booking__slots {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.landing-booking__slot {
+    position: relative;
+    padding: 9px 0;
+    text-align: center;
+    border-radius: 8px;
+    border: 1px solid hsla(268, 30%, 60%, 0.28);
+    color: var(--lp-primary-soft);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* The picked slot's final pose (base = performance already finished). */
+.landing-booking__slot--picked {
+    background: var(--lp-primary);
+    border-color: var(--lp-primary);
+    color: #fff;
+    box-shadow: 0 0 22px hsla(268, 62%, 58%, 0.5);
+}
+
+.landing-booking__toast {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid rgba(16, 185, 129, 0.32);
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--lp-text);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.landing-booking__toast-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.25);
+    color: var(--lp-green);
+    font-size: 0.66rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+/* ── Dual-view booking: the card morphs Focus <-> Calendar as the scene scrolls
+   past centre. Driven by --vp (inherited from .landing-booking__stagebox). At
+   the resting pose (--vp 0.5) the Focus layer is fully lit and Calendar hidden,
+   so an idle engine or reduced motion still shows a clean, correct card. ── */
+.landing-booking__switch {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    margin-bottom: 16px;
+    padding: 3px;
+    border-radius: 999px;
+    border: 1px solid var(--lp-border);
+    background: hsla(268, 20%, 100%, 0.03);
+}
+.landing-booking__switch-label {
+    position: relative;
+    z-index: 1;
+    padding: 5px 0;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--lp-text);
+}
+.landing-booking__switch-thumb {
+    position: absolute;
+    top: 3px;
+    bottom: 3px;
+    left: 3px;
+    width: calc(50% - 3px);
+    border-radius: 999px;
+    background: hsla(268, 62%, 58%, 0.26);
+    box-shadow: 0 0 16px hsla(268, 62%, 58%, 0.25);
+    /* Slides from Focus to Calendar in sync with the card flip. */
+    transform: translateX(calc(clamp(0, calc((var(--vp) - 0.5) / 0.28), 1) * 100%));
+}
+
+.landing-booking__flipwrap {
+    perspective: 1300px;
+    margin-bottom: 16px;
+}
+.landing-booking__flip {
+    position: relative;
+    width: 100%;
+    min-height: 196px;
+    transform-style: preserve-3d;
+    /* Focus (front) at rest; flips to reveal the Calendar (back) as the card
+       scrolls past viewport centre, and flips back on the way up. */
+    transform: rotateY(calc(clamp(0, calc((var(--vp) - 0.5) / 0.28), 1) * 180deg));
+}
+.landing-booking__face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+.landing-booking__face--front {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+.landing-booking__face--back {
+    transform: rotateY(180deg);
+}
+@media (prefers-reduced-motion: reduce) {
+    .landing-booking__flip,
+    .landing-booking__switch-thumb {
+        transform: none;
+    }
+}
+
+.landing-booking__cal-month {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--lp-text);
+}
+.landing-booking__cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-auto-rows: 18px;
+    gap: 3px;
+}
+.landing-booking__cal-dow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.54rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+.landing-booking__cal-day {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    background: hsla(268, 16%, 100%, 0.03);
+    font-size: 0.6rem;
+    color: var(--lp-text-muted);
+}
+.landing-booking__cal-day--sel {
+    background: var(--lp-primary);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: 0 0 16px hsla(268, 62%, 58%, 0.5);
+}
+.landing-booking__cal-day--dot::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    margin-left: -2px;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--lp-primary-soft);
+}
+
+/* ═══ Scene 6 · AI (T3 trip-wire performance) ═══ */
+.landing-ai {
+    position: relative;
+    padding: 7rem 24px 7.5rem;
+    background: var(--lp-bg-deep);
+    border-top: 1px solid var(--lp-border);
+    text-align: center;
+    overflow: hidden;
+}
+
+.landing-ai::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 55% 55% at 50% 8%,
+        hsla(268, 62%, 58%, 0.13), transparent 70%);
+}
+
+.landing-ai__header {
+    position: relative;
+    max-width: 40rem;
+    margin: 0 auto 2.75rem;
+}
+
+.landing-ai__title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.9rem, 3.8vw, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-ai__desc {
+    margin: 0 auto;
+    max-width: 32rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--lp-text-muted);
+}
+
+.landing-ai__stagebox {
+    position: relative;
+    max-width: 36rem;
+    margin: 0 auto;
+}
+
+.landing-ai__bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    border: 1px solid hsla(268, 30%, 60%, 0.3);
+    background: hsla(268, 18%, 13%, 0.85);
+    box-shadow: 0 16px 50px hsla(268, 40%, 4%, 0.5), 0 0 46px hsla(268, 62%, 58%, 0.12);
+    text-align: left;
+}
+
+/* The brand mark anchors the assistant bar: Alectrone's own identity where
+   a generic sparkle glyph would have been. */
+.landing-ai__mark {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.landing-ai__type {
+    display: inline-block;
+    overflow: hidden;
+    white-space: nowrap;
+    max-width: 100%;
+    font-size: 0.98rem;
+    font-weight: 500;
+    color: var(--lp-text);
+    border-right: 2px solid var(--lp-primary-soft);
+    padding-right: 2px;
+    animation: landing-caret 0.9s steps(1) infinite;
+}
+
+.landing-ai__strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.landing-ai__day {
+    position: relative;
+    min-height: 7.5rem;
+    padding-top: 10px;
+    border-radius: 12px;
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg-card);
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+    transition: border-color var(--lp-motion-scene) ease, box-shadow var(--lp-motion-scene) ease;
+}
+
+.landing-ai__day--hit {
+    border-color: hsla(268, 62%, 68%, 0.55);
+    box-shadow: 0 0 26px hsla(268, 62%, 58%, 0.22);
+}
+
+.landing-ai__chip {
+    position: absolute;
+    left: 8px;
+    right: 8px;
+    top: 42%;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    padding: 7px 9px;
+    border-radius: 8px;
+    border: 1px solid hsla(268, 62%, 62%, 0.45);
+    background: hsla(268, 62%, 58%, 0.2);
+    text-align: left;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.landing-ai__chip-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--lp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.landing-ai__chip-title::before {
+    content: "";
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+    background: var(--lp-primary);
+    box-shadow: 0 0 6px hsla(268, 62%, 58%, 0.55);
+}
+
+.landing-ai__chip-time {
+    font-size: 0.64rem;
+    font-weight: 500;
+    color: var(--lp-text-muted);
+}
+
+/* ═══ Scene 6b · COLORWAYS: theater (T20) + colorway lab (T21) ═══════
+   Base: composed, lit, iris act (no class). cw-1 / cw-2 re-theme every
+   surface through --cw-accent / --cw-ink; consuming properties transition
+   on their own clocks (beams and floor are solid-color masked shapes
+   because gradients cannot interpolate a color change). Desktop +
+   .has-motion: 260vh runway, sticky stage, light scrubbed by --p. */
+.landing-cw {
+    --p: 1;
+    --cw-accent: hsl(268, 62%, 58%);
+    --cw-ink: hsl(268, 62%, 80%);
+    position: relative;
+    background: hsl(268, 30%, 4%);
+    border-top: 1px solid var(--lp-border);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+/* The complete rainbow, signature first: iris (default), then ruby,
+   ember, solar, meadow, aurora, cobalt. All pairs sit at the same
+   vivid brightness band. */
+.landing-cw.cw-1 { --cw-accent: #ef4444; --cw-ink: #fca5a5; }
+.landing-cw.cw-2 { --cw-accent: #f97316; --cw-ink: #fdba74; }
+.landing-cw.cw-3 { --cw-accent: #f59e0b; --cw-ink: #fde68a; }
+.landing-cw.cw-4 { --cw-accent: #22c55e; --cw-ink: #86efac; }
+.landing-cw.cw-5 { --cw-accent: #22d3ee; --cw-ink: #a5f3fc; }
+.landing-cw.cw-6 { --cw-accent: #3b82f6; --cw-ink: #93c5fd; }
+
+.landing-cw__stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2.25rem;
+    padding: 6rem 24px 4.5rem;
+    overflow: hidden;
+    text-align: center;
+}
+
+/* T20 rig: light beams drop from the top and rise with commitment. */
+.landing-cw__light {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.landing-cw__beam {
+    position: absolute;
+    top: -4%;
+    width: 22%;
+    height: 78%;
+    background-color: var(--cw-accent);
+    clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+    filter: blur(28px);
+    -webkit-mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 92%);
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.5), transparent 92%);
+    mix-blend-mode: screen;
+    opacity: calc(0.12 + var(--p) * 0.38);
+    transition: background-color 0.6s ease;
+}
+
+.landing-cw__beam--l { left: 6%; transform: rotate(14deg); transform-origin: top center; }
+.landing-cw__beam--c { left: 39%; }
+.landing-cw__beam--r { right: 6%; transform: rotate(-14deg); transform-origin: top center; }
+
+.landing-cw__floor {
+    position: absolute;
+    left: 50%;
+    bottom: 3%;
+    width: 64rem;
+    height: 16rem;
+    transform: translateX(-50%);
+    background-color: var(--cw-accent);
+    -webkit-mask-image: radial-gradient(closest-side, #000, transparent 72%);
+    mask-image: radial-gradient(closest-side, #000, transparent 72%);
+    opacity: calc(0.08 + var(--p) * 0.14);
+    transition: background-color 0.6s ease;
+}
+
+.landing-cw__head {
+    position: relative;
+    max-width: 40rem;
+}
+
+.landing-cw__eyebrow {
+    color: var(--cw-ink);
+    transition: color 0.6s ease;
+}
+
+.landing-cw__title {
+    margin: 0 0 0.75rem;
+    font-size: clamp(1.9rem, 3.8vw, 2.9rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-cw__desc {
+    margin: 0 auto;
+    max-width: 32rem;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    color: var(--lp-text-muted);
+}
+
+/* ── The performer: one app vignette under the light. ── */
+.landing-cw__app {
+    position: relative;
+    width: min(36rem, 100%);
+    border-radius: var(--lp-radius-lg);
+    border: 1px solid color-mix(in srgb, var(--cw-accent) 30%, hsl(268, 16%, 18%));
+    background-color: color-mix(in srgb, var(--cw-accent) 8%, hsl(268, 20%, 8%));
+    /* Resting box-shadow IS the full-shine pose (settled on an exact
+       colorway). The glow keyframes below dip below this while the color
+       morphs, then bloom back up to it as the act lands. */
+    box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6),
+                0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent);
+    overflow: hidden;
+    text-align: left;
+    filter: brightness(calc(0.82 + var(--p) * 0.22));
+    transition: border-color 0.6s ease, background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* A light sweep crosses the performer on every act change (per-act
+   animation aliases so the class flip restarts it). */
+.landing-cw__app::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(100deg, transparent 32%, hsla(0, 0%, 100%, 0.08) 50%, transparent 68%);
+    background-size: 250% 100%;
+    background-position-x: 130%;
+    opacity: 0;
+}
+
+.landing-cw:not(.cw-1):not(.cw-2):not(.cw-3):not(.cw-4):not(.cw-5):not(.cw-6) .landing-cw__app::after { animation: landing-cw-sweep-0 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-1 .landing-cw__app::after { animation: landing-cw-sweep-1 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-2 .landing-cw__app::after { animation: landing-cw-sweep-2 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-3 .landing-cw__app::after { animation: landing-cw-sweep-3 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-4 .landing-cw__app::after { animation: landing-cw-sweep-4 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-5 .landing-cw__app::after { animation: landing-cw-sweep-5 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-6 .landing-cw__app::after { animation: landing-cw-sweep-6 0.9s var(--lp-ease-enter); }
+
+/* Glow bloom: the card's shine dips while the colorway morphs, then blooms
+   to the resting full glow as it lands on an exact rainbow color. Identical
+   bodies under per-act names so each commit restarts it (same trick as the
+   sweep). Reduced motion disables the animation and keeps the full glow. */
+.landing-cw:not(.cw-1):not(.cw-2):not(.cw-3):not(.cw-4):not(.cw-5):not(.cw-6) .landing-cw__app { animation: landing-cw-glow-0 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-1 .landing-cw__app { animation: landing-cw-glow-1 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-2 .landing-cw__app { animation: landing-cw-glow-2 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-3 .landing-cw__app { animation: landing-cw-glow-3 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-4 .landing-cw__app { animation: landing-cw-glow-4 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-5 .landing-cw__app { animation: landing-cw-glow-5 0.9s var(--lp-ease-enter); }
+.landing-cw.cw-6 .landing-cw__app { animation: landing-cw-glow-6 0.9s var(--lp-ease-enter); }
+
+.landing-cw__appbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--cw-accent) 16%, hsl(268, 16%, 16%));
+    color: var(--cw-accent);
+    transition: color 0.6s ease, border-color 0.6s ease;
+}
+
+.landing-cw__mark {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.landing-cw__apptitle {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--lp-text);
+}
+
+.landing-cw__pill {
+    margin-left: auto;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--cw-ink) 80%, #fff);
+    background: color-mix(in srgb, var(--cw-accent) 22%, transparent);
+    border: 1px solid color-mix(in srgb, var(--cw-accent) 40%, transparent);
+    transition: color 0.6s ease, background-color 0.6s ease, border-color 0.6s ease;
+}
+
+.landing-cw__body {
+    display: grid;
+    grid-template-columns: 1.25fr 1fr;
+    gap: 18px;
+    padding: 16px;
+}
+
+.landing-cw__mlabel {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--lp-text);
+}
+
+.landing-cw__mgrid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+}
+
+.landing-cw__dow {
+    padding: 2px 0;
+    text-align: center;
+    font-size: 0.55rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+
+.landing-cw__cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1.15;
+    border-radius: 6px;
+    background: hsla(268, 16%, 14%, 0.6);
+    font-size: 0.58rem;
+    color: var(--lp-text-muted);
+}
+
+.landing-cw__cell--dot::after {
+    content: "";
+    position: absolute;
+    bottom: 3px;
+    left: 50%;
+    margin-left: -2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--cw-accent);
+    transition: background-color 0.6s ease;
+}
+
+.landing-cw__cell--today {
+    background: var(--cw-accent);
+    color: hsl(268, 30%, 8%);
+    font-weight: 700;
+    box-shadow: 0 0 14px color-mix(in srgb, var(--cw-accent) 55%, transparent);
+    transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+.landing-cw__daypanel {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.landing-cw__dlabel {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--lp-text);
+}
+
+.landing-cw__slot {
+    padding: 8px 10px;
+    border-radius: 8px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--lp-text);
+    background: hsla(268, 16%, 14%, 0.7);
+    border: 1px solid hsla(268, 16%, 20%, 0.8);
+    transition: background-color 0.6s ease, border-color 0.6s ease, color 0.6s ease;
+}
+
+.landing-cw__slot--active {
+    background: color-mix(in srgb, var(--cw-accent) 26%, transparent);
+    border-color: color-mix(in srgb, var(--cw-accent) 45%, transparent);
+    color: color-mix(in srgb, var(--cw-ink) 70%, #fff);
+}
+
+.landing-cw__book {
+    margin-top: 4px;
+    padding: 9px 10px;
+    border-radius: 8px;
+    text-align: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: hsl(268, 30%, 8%);
+    background: var(--cw-accent);
+    box-shadow: 0 4px 18px color-mix(in srgb, var(--cw-accent) 40%, transparent);
+    transition: background-color 0.6s ease, box-shadow 0.6s ease;
+}
+
+/* ── The swatch bar: scroll demonstrates, click controls. ── */
+.landing-cw__bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 16px 12px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--lp-border);
+    background: hsla(268, 16%, 13%, 0.85);
+}
+
+.landing-cw__swatches {
+    display: flex;
+    gap: 10px;
+}
+
+.landing-cw__swatch {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform var(--lp-motion-fast) var(--lp-ease-spring),
+                border-color var(--lp-motion-base) ease, box-shadow var(--lp-motion-base) ease;
+}
+
+.landing-cw__swatch:hover { transform: translateY(-2px); }
+
+.landing-cw__swatch[aria-pressed="true"] {
+    border-color: hsla(268, 10%, 92%, 0.85);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--cw-accent) 45%, transparent);
+}
+
+.landing-cw__swatch--iris   { background: radial-gradient(circle at 32% 30%, hsl(268, 62%, 72%), hsl(268, 62%, 52%) 72%); }
+.landing-cw__swatch--ruby   { background: radial-gradient(circle at 32% 30%, #fca5a5, #ef4444 72%); }
+.landing-cw__swatch--ember  { background: radial-gradient(circle at 32% 30%, #fdba74, #f97316 72%); }
+.landing-cw__swatch--solar  { background: radial-gradient(circle at 32% 30%, #fcd34d, #f59e0b 72%); }
+.landing-cw__swatch--meadow { background: radial-gradient(circle at 32% 30%, #86efac, #22c55e 72%); }
+.landing-cw__swatch--aurora { background: radial-gradient(circle at 32% 30%, #67e8f9, #22d3ee 72%); }
+.landing-cw__swatch--cobalt { background: radial-gradient(circle at 32% 30%, #93c5fd, #3b82f6 72%); }
+
+.landing-cw__captions {
+    position: relative;
+    min-width: 17rem;
+    min-height: 2.7rem;
+    text-align: left;
+}
+
+.landing-cw__cap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(0.4rem);
+    transition: opacity 0.45s ease, transform 0.45s var(--lp-ease-enter);
+}
+
+.landing-cw__cap b {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--lp-text);
+}
+
+.landing-cw__cap i {
+    font-style: normal;
+    font-size: 0.78rem;
+    color: var(--lp-text-muted);
+}
+
+.landing-cw:not(.cw-1):not(.cw-2):not(.cw-3):not(.cw-4):not(.cw-5):not(.cw-6) .landing-cw__cap--0,
+.landing-cw.cw-1 .landing-cw__cap--1,
+.landing-cw.cw-2 .landing-cw__cap--2,
+.landing-cw.cw-3 .landing-cw__cap--3,
+.landing-cw.cw-4 .landing-cw__cap--4,
+.landing-cw.cw-5 .landing-cw__cap--5,
+.landing-cw.cw-6 .landing-cw__cap--6 {
+    opacity: 1;
+    transform: none;
+}
+
+.landing-cw__cta { flex-shrink: 0; }
+
+/* ═══ Scene 7 · PROOF (T2 pin + T15/T17 overture) ═══════════════════
+   Base: a static composed stage. Desktop + .has-motion: 240vh runway,
+   sticky stage, dawn and stats scrubbed by --p, counters from the engine. */
+.landing-proof {
+    --p: 1;
+    position: relative;
+    background: hsl(268, 28%, 5%);
+    border-top: 1px solid var(--lp-border);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-proof__stage {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    padding: 6rem 24px;
+    overflow: hidden;
+    text-align: center;
+}
+
+/* Light is a material (T17): the dawn rises as the visitor commits. */
+.landing-proof__dawn {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 85% 60% at 50% 108%,
+        hsla(268, 62%, 58%, 0.26), hsla(243, 65%, 60%, 0.08) 55%, transparent 78%);
+    transform: translateY(calc((1 - var(--p)) * 26%));
+    opacity: calc(0.15 + var(--p) * 0.85);
+}
+
+/* Billboard type (T17): one giant numeral anchors the whole stage. */
+.landing-proof__billboard {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -54%) scale(calc(0.94 + var(--p) * 0.06));
+    font-size: clamp(14rem, 36vh, 28rem);
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    pointer-events: none;
+    background-image: linear-gradient(120deg, hsl(268, 70%, 72%), hsl(268, 55%, 42%));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    opacity: calc(0.05 + var(--p) * 0.07);
+}
+
+.landing-proof__note {
+    position: relative;
+    margin: -2rem 0 0;
+    font-size: 0.95rem;
+    color: var(--lp-text-muted);
+}
+
+.landing-proof__statement {
+    position: relative;
+    margin: 0;
+    font-size: clamp(2rem, 4.6vw, 3.6rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background-image: linear-gradient(100deg,
+        hsl(268, 30%, 96%) 0%, hsl(268, 65%, 80%) 28%, var(--lp-primary) 48%,
+        hsla(268, 10%, 92%, 0.2) 52%, hsla(268, 10%, 92%, 0.2) 100%);
+    background-size: 215% 100%;
+    background-position-x: calc(100% * (1 - min(var(--p) * 1.8, 1)));
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+}
+
+.landing-proof__stats {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(9rem, 1fr));
+    gap: 2.5rem;
+    margin: 0;
+    max-width: 60rem;
+    opacity: clamp(0, (var(--p) - 0.3) * 3.5, 1);
+    transform: translateY(calc(max(0.35 - var(--p), 0) * 6rem));
+}
+
+.landing-proof__stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.landing-proof__num {
+    margin: 0;
+    font-size: 2.6rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    background: linear-gradient(135deg, var(--lp-primary-soft), var(--lp-text));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    color: transparent;
+    /* Tabular figures so the count-up animation doesn't reflow width
+       digit-by-digit (matches the App homepage's .hp-stat__num). */
+    font-variant-numeric: tabular-nums;
+}
+
+.landing-proof__label {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--lp-text-muted);
+}
+
+/* ═══ Scene 8 · PRICING ═══
+   Four self-serve cards mirroring the in-app plan picker, plus a quiet
+   sales-led Enterprise band: counts follow the catalog, not a template. */
+.landing-pricing {
+    padding: 8rem 24px;
+    background: var(--lp-bg-deep);
+}
+
+.landing__section-inner {
+    max-width: var(--lp-max-width);
+    margin: 0 auto;
+}
+
+.landing__section-title {
+    text-align: center;
+    font-size: clamp(1.6rem, 3vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    /* Explicit so the base h2 rule (var(--color-text-strong)) can't darken it
+       when a returning user has a non-dark theme persisted. Brand page = iris. */
+    color: var(--lp-text);
+}
+
+.landing__section-subtitle {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--lp-text-muted);
+    max-width: 560px;
+    margin: 0 auto 56px;
+}
+
+.landing__price-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    align-items: start;
+    margin: 0 auto;
+}
+
+.landing__price-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 24px;
+    border-radius: var(--lp-radius-lg);
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg-card);
+    transition: border-color var(--lp-motion-base) ease, background var(--lp-motion-base) ease,
+                transform var(--lp-motion-scene) var(--lp-ease-enter), opacity var(--lp-motion-scene) ease,
+                box-shadow var(--lp-motion-base) ease, filter var(--lp-motion-base) ease;
+}
+
+/* Hover reads as lit, not repainted (T17: light over alpha). */
+.landing__price-card:hover {
+    border-color: hsla(268, 50%, 50%, 0.3);
+    background: var(--lp-bg-card-hover);
+    filter: brightness(1.05);
+    box-shadow: 0 10px 36px hsla(268, 40%, 10%, 0.35);
+}
+
+.landing__price-card--featured {
+    border-color: hsla(268, 62%, 58%, 0.5);
+    background:
+        linear-gradient(180deg, hsla(268, 62%, 58%, 0.09), transparent 42%),
+        var(--lp-bg-card);
+    box-shadow: 0 12px 48px hsla(268, 60%, 40%, 0.2);
+}
+
+.landing__price-badge {
+    position: absolute;
+    top: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 14px;
+    border-radius: 999px;
+    background: var(--lp-primary);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.landing__price-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--lp-primary-soft);
+    margin-bottom: 12px;
+}
+
+.landing__price-amount {
+    font-size: 2.3rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: var(--lp-text);
+    margin-bottom: 8px;
+}
+.landing__price-amount--custom {
+    font-size: 2rem;
+}
+.landing__price-currency {
+    font-size: 1.4rem;
+    font-weight: 700;
+    vertical-align: super;
+    margin-right: 2px;
+}
+.landing__price-period {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--lp-text-muted);
+    letter-spacing: 0;
+}
+
+.landing__price-tagline {
+    font-size: 0.9rem;
+    color: var(--lp-text-muted);
+    margin: 0 0 20px;
+}
+
+.landing__price-features {
+    list-style: none;
+    margin: 0 0 28px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    flex: 1;
+}
+.landing__price-features li {
+    position: relative;
+    padding-left: 24px;
+    font-size: 0.9rem;
+    color: var(--lp-text);
+    line-height: 1.5;
+}
+.landing__price-features li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.3em;
+    width: 0.85em;
+    height: 0.85em;
+    background: var(--lp-primary-soft);
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+/* Enterprise is sales-led (absent from the self-serve catalog by design),
+   so it gets a quiet band, not a fifth card. */
+.landing__price-enterprise {
+    margin-top: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 22px 28px;
+    border-radius: var(--lp-radius-lg);
+    border: 1px solid var(--lp-border);
+    background: var(--lp-bg-card);
+    transition: border-color var(--lp-motion-base) ease, filter var(--lp-motion-base) ease,
+                transform var(--lp-motion-scene) var(--lp-ease-enter), opacity var(--lp-motion-scene) ease;
+}
+
+.landing__price-enterprise:hover {
+    border-color: hsla(268, 50%, 50%, 0.3);
+    filter: brightness(1.05);
+}
+
+.landing__price-enterprise-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.landing__price-enterprise-copy .landing__price-name {
+    margin-bottom: 2px;
+}
+
+.landing__price-enterprise-copy p {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--lp-text-muted);
+}
+
+/* ═══ Scene 10 · Close ═══ */
+.landing-close {
+    position: relative;
+    padding: 8rem 24px;
+    text-align: center;
+    background: var(--lp-bg-deep);
+    border-top: 1px solid var(--lp-border);
+    overflow: hidden;
+}
+
+.landing-close__glow {
+    position: absolute;
+    left: 50%;
+    bottom: -14rem;
+    transform: translateX(-50%);
+    width: 60rem;
+    height: 26rem;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center,
+        hsla(268, 70%, 50%, 0.2) 0%, hsla(268, 60%, 40%, 0.06) 50%, transparent 72%);
+}
+
+.landing-close__title {
+    position: relative;
+    font-size: clamp(1.8rem, 3.6vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0 0 12px;
+    color: var(--lp-text);
+}
+
+.landing-close__subtitle {
+    position: relative;
+    font-size: 1.1rem;
+    color: var(--lp-text-muted);
+    margin: 0 0 36px;
+}
+
+/* ── Footer ── */
+.landing__footer {
+    border-top: 1px solid var(--lp-border);
+    background: var(--lp-bg-deep);
+    padding: 56px 24px 32px;
+}
+
+.landing__footer-inner {
+    max-width: var(--lp-max-width);
+    margin: 0 auto;
+}
+
+.landing__footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 32px;
+    color: var(--lp-text-muted);
+}
+
+.landing__footer-links {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    margin-bottom: 40px;
+}
+
+.landing__footer-col h4 {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--lp-text);
+    margin: 0 0 12px;
+    font-weight: 600;
+}
+
+.landing__footer-col a {
+    display: block;
+    color: var(--lp-text-muted);
+    text-decoration: none;
+    font-size: 0.88rem;
+    padding: 4px 0;
+    transition: color var(--lp-transition);
+}
+.landing__footer-col a:hover {
+    color: var(--lp-text);
+}
+
+/* Demo build: the third footer column states what this build is instead of
+   linking to account pages that do not exist here. Same metrics as the
+   anchors above so the three columns stay optically identical. */
+.landing__footer-note {
+    display: block;
+    color: var(--lp-text-muted);
+    font-size: 0.88rem;
+    padding: 4px 0;
+}
+
+.landing__footer-bottom {
+    padding-top: 24px;
+    border-top: 1px solid var(--lp-border);
+    font-size: 0.82rem;
+    color: var(--lp-text-muted);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   CHOREOGRAPHY - everything below only applies once the engine has added
+   .has-motion (JS present, no reduced-motion preference). Without it the
+   page renders every scene in its composed final pose.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── T3 pre-entry poses: rise 3em + fade, one grammar everywhere.
+   (The statement is absent on purpose: its entrance is the scrubbed
+   chapter-title pop, not a trip-wire pose.) ── */
+.landing.has-motion .landing-views__head,
+.landing.has-motion .landing-views__panel,
+.landing.has-motion .landing-views__hint,
+.landing.has-motion .landing-booking__copy,
+.landing.has-motion .landing-booking__card,
+.landing.has-motion .landing-ai__header,
+.landing.has-motion .landing-ai__bar,
+.landing.has-motion .landing-pricing .landing__section-title,
+.landing.has-motion .landing-pricing .landing__section-subtitle,
+.landing.has-motion .landing-pricing .landing__price-card,
+.landing.has-motion .landing-pricing .landing__price-enterprise,
+.landing.has-motion .landing-close .landing__section-inner {
+    opacity: 0;
+    transform: translateY(2rem);
+    transition: opacity 0.7s var(--lp-ease-enter), transform 0.7s var(--lp-ease-enter);
+}
+
+/* Panels rise a shorter distance: they animate inside the strip's clipped
+   box, so the travel stays within its padding. */
+.landing.has-motion .landing-views__panel {
+    transform: translateY(1.1rem);
+}
+
+/* .active: the scene takes the stage. */
+.landing.has-motion .landing-views.active .landing-views__head,
+.landing.has-motion .landing-views.active .landing-views__panel,
+.landing.has-motion .landing-views.active .landing-views__hint,
+.landing.has-motion .landing-booking.active .landing-booking__copy,
+.landing.has-motion .landing-booking.active .landing-booking__card,
+.landing.has-motion .landing-ai.active .landing-ai__header,
+.landing.has-motion .landing-ai.active .landing-ai__bar,
+.landing.has-motion .landing-pricing.active .landing__section-title,
+.landing.has-motion .landing-pricing.active .landing__section-subtitle,
+.landing.has-motion .landing-pricing.active .landing__price-card,
+.landing.has-motion .landing-pricing.active .landing__price-enterprise,
+.landing.has-motion .landing-close.active .landing__section-inner {
+    opacity: 1;
+    transform: translateY(0) translateX(0);
+}
+
+/* Stagger: the views film deals its panels left to right, hint last. */
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(1) { transition-delay: 0.1s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(2) { transition-delay: 0.17s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(3) { transition-delay: 0.24s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(4) { transition-delay: 0.31s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(5) { transition-delay: 0.38s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(6) { transition-delay: 0.45s; }
+.landing.has-motion .landing-views.active .landing-views__panel:nth-child(7) { transition-delay: 0.52s; }
+.landing.has-motion .landing-views.active .landing-views__hint { transition-delay: 0.6s; }
+
+/* Stagger: header first, then items left to right, the band closing. */
+.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(1) { transition-delay: 0.12s; }
+.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(2) { transition-delay: 0.2s; }
+.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(3) { transition-delay: 0.28s; }
+.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(4) { transition-delay: 0.36s; }
+.landing.has-motion .landing-pricing.active .landing__price-enterprise { transition-delay: 0.46s; }
+
+/* Stagger delays must not lag pointer feedback once a scene is at rest. */
+.landing.has-motion .landing-pricing.active .landing__price-card:hover,
+.landing.has-motion .landing-pricing.active .landing__price-enterprise:hover,
+.landing.has-motion .landing-views.active .landing-views__panel:hover {
+    transition-delay: 0s;
+}
+
+
+/* ── T13 departure grammar: scenes that left through the top dim and
+   drift up, so the stage is empty before the next act. ── */
+.landing.has-motion section[data-scene] {
+    transition: opacity 0.6s ease, filter 0.6s ease;
+}
+
+.landing.has-motion section[data-scene].past {
+    opacity: 0.3;
+    filter: brightness(0.75);
+}
+
+/* ── Booking performance timeline (runs on .active, resets on removal) ── */
+.landing.has-motion .landing-booking__slot {
+    opacity: 0;
+}
+
+.landing.has-motion .landing-booking.active .landing-booking__slot {
+    animation: landing-pop 0.45s var(--lp-ease-spring) both;
+}
+
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(1) { animation-delay: 0.5s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(2) { animation-delay: 0.62s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(3) { animation-delay: 0.74s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(4) { animation-delay: 0.86s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(5) { animation-delay: 0.98s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(6) { animation-delay: 1.1s; }
+
+/* Pre-pick pose: the picked slot looks like its neighbors until the
+   performance picks it. */
+.landing.has-motion .landing-booking__slot--picked {
+    background: transparent;
+    border-color: hsla(268, 30%, 60%, 0.28);
+    color: var(--lp-primary-soft);
+    box-shadow: none;
+}
+
+.landing.has-motion .landing-booking.active .landing-booking__slot--picked {
+    animation:
+        landing-pop 0.45s var(--lp-ease-spring) 0.62s both,
+        landing-slot-pick 0.5s ease 1.75s both;
+}
+
+.landing.has-motion .landing-booking__toast {
+    opacity: 0;
+}
+
+.landing.has-motion .landing-booking.active .landing-booking__toast {
+    animation: landing-toast-in 0.55s var(--lp-ease-enter) 2.35s both;
+}
+
+/* ── AI performance timeline ── */
+.landing.has-motion .landing-ai__type {
+    max-width: 0;
+    animation: landing-caret 0.9s steps(1) infinite;
+}
+
+.landing.has-motion .landing-ai.active .landing-ai__type {
+    animation:
+        landing-type 1.4s steps(32, end) 0.7s both,
+        landing-caret 0.9s steps(1) infinite;
+}
+
+.landing.has-motion .landing-ai__strip {
+    opacity: 0;
+    transform: translateY(1.25rem);
+    transition: opacity 0.6s var(--lp-ease-enter) 0.3s, transform 0.6s var(--lp-ease-enter) 0.3s;
+}
+
+.landing.has-motion .landing-ai.active .landing-ai__strip {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.landing.has-motion .landing-ai__day--hit {
+    border-color: var(--lp-border);
+    box-shadow: none;
+}
+
+.landing.has-motion .landing-ai.active .landing-ai__day--hit {
+    animation: landing-day-hit 0.6s ease 2.25s both;
+}
+
+.landing.has-motion .landing-ai__chip {
+    opacity: 0;
+}
+
+.landing.has-motion .landing-ai.active .landing-ai__chip {
+    animation: landing-chip-pop 0.55s var(--lp-ease-spring) 2.4s both;
+}
+
+/* ═══ Desktop-only pin and pose geometry (T2/T12: pins and wheel-count
+   assumptions make no sense under touch momentum scrolling) ═══ */
+@media (min-width: 961px) {
+    /* ── Hero runway: 220vh; the stage pins while the overture plays
+       (growth, fill, hold, handoff, departure), then releases. ── */
+    .landing.has-motion .landing-hero {
+        height: 220vh;
+    }
+
+    .landing.has-motion .landing-hero__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        min-height: 0;
+        height: calc(100vh - var(--lp-header-h));
+    }
+
+    /* ── Views runway: 240vh; the stage pins while page scroll plays the
+       film (the engine maps runway progress onto the strip's scrollLeft,
+       so the wheel is never intercepted for vertical input). Snapping is
+       off in this mode: the sync writes scrollLeft every frame. ── */
+    .landing.has-motion .landing-views {
+        height: 240vh;
+    }
+
+    .landing.has-motion .landing-views__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 2rem 0;
+        overflow: hidden;
+    }
+
+    .landing.has-motion .landing-views__strip {
+        scroll-snap-type: none;
+    }
+
+    /* ── Schedule runway: 300vh, about 4 wheel flicks of pin ── */
+    .landing.has-motion .landing-week {
+        --p: 0;
+        height: 300vh;
+    }
+
+    .landing.has-motion .landing-week__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    /* Light rises with progress (T17: luminance, not alpha). */
+    .landing.has-motion .landing-week__dawn {
+        transform: translateY(calc((1 - var(--p)) * 22%));
+        opacity: calc(0.2 + var(--p) * 0.8);
+    }
+
+    /* The rig and vignette rise with the pose: as the frame widens to the
+       full-bleed team canvas, the house lights come up (T23 lighting cue). */
+    .landing.has-motion .landing-week__rig { opacity: calc(0.12 + var(--p) * 0.88); }
+    .landing.has-motion .landing-week__vignette { opacity: calc(0.35 + var(--p) * 0.65); }
+
+    .landing.has-motion .landing-week__media {
+        position: absolute;
+        /* A little breathing room above the calendar so the full-bleed pose 2
+           floats clear of the header instead of butting against it; the bottom
+           still reserves the 11.5rem caption band, and pose 1 stays centered. */
+        inset: 1.5rem 0 11.5rem;
+        align-items: center;
+    }
+
+    /* Pose 1: inset rounded card. Pose 2 (same asset): full bleed.
+       Widening the frame is the pitch. */
+    .landing.has-motion .landing-week__app {
+        width: 56%;
+        height: 68%;
+        transition: width 0.9s var(--lp-ease-enter), height 0.9s var(--lp-ease-enter),
+                    border-radius 0.9s var(--lp-ease-enter), border-color 0.9s ease, box-shadow 0.9s ease;
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__app {
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
+        border-color: transparent;
+        box-shadow: none;
+    }
+
+    /* The team layer exists only in pose 2: shared events surface and the
+       avatar stack arrives. */
+    .landing.has-motion .landing-week__ev--team {
+        opacity: 0;
+        transform: translateY(0.5rem);
+        transition-delay: 0s;
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__ev--team {
+        opacity: 1;
+        transform: translateY(0);
+        transition-delay: 0.35s;
+    }
+
+    /* One event pings as pose 2 arrives, the way an event pulses when a
+       search result jumps you to it in the app. It starts after the team
+       layer has faded in and plays a few times, then rests; pose 2 re-commits
+       on scroll, so re-entering the canvas re-pings it. Only box-shadow
+       animates (transform stays free for the team fade-in), and every
+       keyframe carries the event's base shadow so nothing is lost. Reduced
+       motion disables it via the blanket rule. */
+    .landing.has-motion .landing-week.pose2 .landing-week__ev--pulse {
+        animation: landing-wk-pulse 1.3s ease-out 0.9s 3;
+    }
+
+    /* Chips catch the overhead light in pose 2: a stronger top inner-highlight
+       and a deeper drop, so events read as objects on a lit stage (T23). The
+       pulse event is excluded so its box-shadow animation stays intact. */
+    .landing.has-motion .landing-week.pose2 .landing-week__ev:not(.landing-week__ev--pulse) {
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c, var(--lp-primary)) 46%, transparent),
+                    0 8px 26px hsla(268, 55%, 3%, 0.5);
+    }
+
+    .landing.has-motion .landing-week__avatar {
+        opacity: 0;
+        transform: translateX(0.5rem);
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__avatar {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__avatar:nth-child(1) { transition-delay: 0.4s; }
+    .landing.has-motion .landing-week.pose2 .landing-week__avatar:nth-child(2) { transition-delay: 0.48s; }
+    .landing.has-motion .landing-week.pose2 .landing-week__avatar:nth-child(3) { transition-delay: 0.56s; }
+    .landing.has-motion .landing-week.pose2 .landing-week__avatar:nth-child(4) { transition-delay: 0.64s; }
+
+    /* Caption band: crossfade with counter-drift (T12 caption grammar). */
+    .landing.has-motion .landing-week__band {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 11.5rem;
+        padding: 1.75rem 24px 0;
+        background: linear-gradient(180deg, transparent, hsl(268, 26%, 5%) 38%);
+    }
+
+    .landing.has-motion .landing-week__captions {
+        position: relative;
+        height: 100%;
+    }
+
+    .landing.has-motion .landing-week__cap {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .landing.has-motion .landing-week__cap--1 {
+        display: block;
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__cap--1 {
+        opacity: 0;
+        transform: translateY(1rem);
+    }
+
+    .landing.has-motion .landing-week__cap--2 {
+        opacity: 0;
+        transform: translateY(-1rem);
+    }
+
+    .landing.has-motion .landing-week.pose2 .landing-week__cap--2 {
+        opacity: 1;
+        transform: translateY(0);
+    }
+
+    /* ── Colorways runway: 380vh; the theater pins while scroll walks the
+       seven rainbow acts (equal commit bands with dead zones, generalized
+       in the engine). ── */
+    .landing.has-motion .landing-cw {
+        --p: 0;
+        height: 380vh;
+    }
+
+    .landing.has-motion .landing-cw__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        justify-content: center;
+        padding: 1.5rem 24px;
+        gap: 1.75rem;
+    }
+
+    /* ── Proof runway: 240vh ── */
+    .landing.has-motion .landing-proof {
+        --p: 0;
+        height: 240vh;
+    }
+
+    .landing.has-motion .landing-proof__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        padding: 2rem 24px;
+    }
+}
+
+/* Above the rail's own breakpoint the fixed chapter spine occupies the left
+   edge, so the full-bleed pose holds back a symmetric gutter wide enough to
+   clear the rail dot and its active "SCHEDULE" label instead of running under
+   them. Because it is now inset rather than edge-to-edge, pose 2 reads as a
+   wide floating card: rounded corners, a hairline border, and the same soft
+   shadow the base app carries (all already in the pose transition, so they
+   ease in). Below 1121px the rail is hidden and the calendar keeps its true
+   edge-to-edge bleed with square corners. */
+@media (min-width: 1121px) {
+    .landing.has-motion .landing-week.pose2 .landing-week__app {
+        /* ~7.5rem each side clears left:20px + dot + "SCHEDULE" label. */
+        width: calc(100% - 15rem);
+        border-radius: var(--lp-radius-lg);
+        border-color: var(--lp-border);
+        box-shadow: 0 30px 80px hsla(268, 40%, 4%, 0.55),
+                    0 0 90px hsla(268, 62%, 58%, 0.08);
+    }
+}
+
+/* Rail is a desktop instrument. */
+@media (max-width: 1120px) {
+    .landing-rail { display: none; }
+
+    .landing__price-grid {
+        grid-template-columns: repeat(2, 1fr);
+        max-width: 700px;
+    }
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+    /* The editorial split collapses to one centred column. The calendar surface
+       is a desktop signature (it needs the pinned overture's room), so below
+       this width it steps aside and the copy holds the hero — the same
+       single-viewport pose the overture already falls back to off the pin. */
+    .landing-hero__layout {
+        grid-template-columns: 1fr;
+        text-align: center;
+        gap: 2.5rem;
+    }
+    .landing-hero__layout .landing-hero__inner {
+        max-width: none;
+        margin-inline: auto;
+    }
+    .landing-hero__layout .landing-hero__title,
+    .landing-hero__layout .landing-hero__statement {
+        transform-origin: center;
+    }
+    .landing-hero__layout .landing-hero__statement { margin-inline: auto; }
+    .landing-hero__sun { display: none; }
+    .landing-week__app { height: 20rem; }
+    .landing-week__ev { padding: 3px 5px; }
+    .landing-week__ev-title { font-size: 0.58rem; }
+    .landing-week__ev-time,
+    .landing-week__ev-meta,
+    .landing-week__ev-people { display: none; }
+
+    .landing-booking__grid {
+        grid-template-columns: 1fr;
+        gap: 40px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* ── Mobile navigation ──
+       Base pose (JS off, reduced motion): the anchors stay in flow as a
+       second header row, always reachable. With motion armed the row
+       becomes a toggle-driven panel under the bar (.nav-open). */
+    .landing__header-inner {
+        flex-wrap: wrap;
+        height: auto;
+        gap: 0 16px;
+    }
+
+    .landing__brand,
+    .landing__auth-actions {
+        height: var(--lp-header-h);
+    }
+
+    .landing__nav {
+        order: 3;
+        width: 100%;
+        gap: 22px;
+        padding: 2px 0 14px;
+        overflow-x: auto;
+    }
+
+    .landing.has-motion .landing__header-inner {
+        flex-wrap: nowrap;
+        height: var(--lp-header-h);
+    }
+
+    .landing.has-motion .landing__nav-toggle {
+        display: inline-flex;
+    }
+
+    .landing.has-motion .landing__nav {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        order: 0;
+        width: auto;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        padding: 8px 32px 16px;
+        background: hsla(268, 20%, 9%, 0.92);
+        backdrop-filter: blur(16px) saturate(1.4);
+        -webkit-backdrop-filter: blur(16px) saturate(1.4);
+        border-bottom: 1px solid var(--lp-border);
+        opacity: 0;
+        transform: translateY(-0.4rem);
+        pointer-events: none;
+        overflow: visible;
+        transition: opacity var(--lp-motion-base) ease, transform var(--lp-motion-base) var(--lp-ease-enter);
+    }
+
+    .landing.has-motion .landing__nav a {
+        width: 100%;
+        padding: 11px 0;
+        font-size: 1rem;
+    }
+
+    .landing.nav-open .landing__nav {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+
+    .landing__price-grid {
+        grid-template-columns: 1fr;
+        max-width: 420px;
+    }
+
+    .landing__price-enterprise {
+        flex-direction: column;
+        align-items: flex-start;
+        max-width: 420px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
+    .landing-cw__body { grid-template-columns: 1fr; }
+
+    .landing-cw__bar {
+        flex-wrap: wrap;
+        justify-content: center;
+        border-radius: var(--lp-radius-lg);
+        text-align: center;
+    }
+
+    .landing-cw__captions {
+        width: 100%;
+        min-width: 0;
+        min-height: 3.2rem;
+        text-align: center;
+    }
+
+    .landing-proof__stats {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    .landing-proof__billboard { font-size: 9rem; }
+
+    .landing-ai__strip { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+    .landing-ai__day { min-height: 6rem; }
+
+    .landing__footer-links {
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+
+    .landing-week__grid { grid-template-columns: repeat(5, 1fr); }
+    .landing-week__col--wknd { display: none; }
+}
+
+@media (max-width: 480px) {
+    /* The compact bar keeps brand + primary CTA + toggle; sign-in moves
+       into the nav (both the base row and the motion panel show it). */
+    .landing__auth-actions .landing__btn--ghost { display: none; }
+    .landing__nav-signin { display: block; }
+    .landing__header-inner { padding: 0 20px; }
+    .landing.has-motion .landing__nav { padding-left: 20px; padding-right: 20px; }
+}
+
+/* ── Keyframes ── */
+@keyframes landing-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes landing-rise {
+    from { opacity: 0; transform: translateY(1.5rem); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* The statement's entrance keeps its resting subtitle scale, so the
+   backwards fill hands off to the scrub without a size flash. */
+@keyframes landing-rise-sub {
+    from { opacity: 0; transform: translateY(1.5rem) scale(0.42); }
+    to   { opacity: 1; transform: translateY(0) scale(0.42); }
+}
+
+@keyframes landing-drift {
+    from { transform: translate3d(0, 0, 0) scale(1); }
+    to   { transform: translate3d(2.5rem, -1.75rem, 0) scale(1.06); }
+}
+
+@keyframes landing-cue {
+    0%   { transform: translateY(0); opacity: 1; }
+    60%  { transform: translateY(14px); opacity: 0; }
+    61%  { transform: translateY(0); opacity: 0; }
+    100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Lands exactly on the cue's resting opacity (0.9 at exit 0), so the
+   backwards fill hands off without a step. */
+@keyframes landing-cue-fade {
+    from { opacity: 0; }
+    to   { opacity: 0.9; }
+}
+
+/* Concept A motion. The plane settles in on the tilt it will hold at rest, the
+   week revolves slowly (each seat counter-turning upright and pulsing through
+   depth), the star breathes with a drifting granulation and a prominence, the
+   corona swells and the nebula drifts, distant stars twinkle, and today's seat
+   pulses. The plane entrance ends on the same rake the base rule holds (at
+   --exit 0), so it never snaps when the animation hands back to the
+   scroll-driven transform. Every rest / reduced pose is the composed still. */
+@keyframes landing-hsun-in {
+    from { opacity: 0; transform: rotateX(28deg) rotateY(-7deg) translateY(1.8rem) scale(0.9); }
+    to   { opacity: 1; transform: rotateX(28deg) rotateY(-7deg) translateY(0) scale(1); }
+}
+@keyframes landing-hsun-spin {
+    to { transform: rotate(360deg); }
+}
+@keyframes landing-hsun-counter {
+    to { transform: rotate(-360deg); }
+}
+/* Near arc at 50% (large, bright, sharp); far arc small, dim, and soft. */
+@keyframes landing-hsun-depth {
+    0%, 100% { transform: scale(0.6);  opacity: 0.42; filter: blur(1.2px) brightness(0.82); }
+    50%      { transform: scale(1.17); opacity: 1;    filter: blur(0)     brightness(1.16); }
+}
+@keyframes landing-hsun-corona {
+    0%, 100% { transform: scale(1);    opacity: 0.85; }
+    50%      { transform: scale(1.06); opacity: 1; }
+}
+/* Time dial: the iris sweep hand turns once a minute. */
+@keyframes landing-hsun-sweep {
+    to { transform: rotate(360deg); }
+}
+@keyframes landing-hsun-nebula {
+    from { transform: translate3d(0, 0, 0); }
+    to   { transform: translate3d(2%, -3%, 0); }
+}
+@keyframes landing-hsun-twinkle {
+    0%, 100% { opacity: 0.4; }
+    50%      { opacity: 0.7; }
+}
+@keyframes landing-hsun-todaypulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.22); }
+}
+
+@keyframes landing-pop {
+    from { opacity: 0; transform: translateY(0.5rem) scale(0.7); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes landing-slot-pick {
+    from {
+        background: transparent;
+        border-color: hsla(268, 30%, 60%, 0.28);
+        color: hsl(268, 62%, 68%);
+        box-shadow: 0 0 0 0 hsla(268, 62%, 58%, 0.55);
+    }
+    60% {
+        box-shadow: 0 0 0 10px hsla(268, 62%, 58%, 0);
+    }
+    to {
+        background: hsl(268, 62%, 58%);
+        border-color: hsl(268, 62%, 58%);
+        color: #fff;
+        box-shadow: 0 0 22px hsla(268, 62%, 58%, 0.5);
+    }
+}
+
+@keyframes landing-toast-in {
+    from { opacity: 0; transform: translateY(0.75rem); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes landing-type {
+    from { max-width: 0; }
+    to   { max-width: 34ch; }
+}
+
+@keyframes landing-caret {
+    0%, 100% { border-right-color: hsl(268, 62%, 68%); }
+    50%      { border-right-color: transparent; }
+}
+
+@keyframes landing-day-hit {
+    from {
+        border-color: hsl(268, 16%, 18%);
+        box-shadow: none;
+    }
+    to {
+        border-color: hsla(268, 62%, 68%, 0.55);
+        box-shadow: 0 0 26px hsla(268, 62%, 58%, 0.22);
+    }
+}
+
+@keyframes landing-chip-pop {
+    from { opacity: 0; transform: scale(0.5) translateY(0.4rem); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* The schedule demo's ambient colorway cycle: a fast, vivid trip around
+   the hue wheel (saturation and brightness lifted so the washes read as
+   bright as the colorway vignette), shared by the app mock and the dawn.
+   The cycle STARTS on and DWELLS on the Alectrone iris pose (hue 0): it
+   holds hue 0 for the first 1/8 of the loop, then sweeps 0->360 over the
+   remaining 7/8. Because the loop boundary (360deg) is visually iris again,
+   that hold merges with the wheel crossing back through iris, so the iris
+   pose reads for ~2x as long as any other colour before the trip resumes. */
+@keyframes landing-wk-rainbow {
+    0%, 12.5% { filter: hue-rotate(0deg) saturate(1.55) brightness(1.12); }
+    100%      { filter: hue-rotate(360deg) saturate(1.55) brightness(1.12); }
+}
+
+/* Overhead beams cycle hue in step with the calendar's colorway (same iris
+   start + double dwell). Blur is folded into every keyframe so animating the
+   filter never drops it; reduced motion stills the animation and the static
+   blur on .landing-week__beam holds the beam at its iris pose. */
+@keyframes landing-wk-beam {
+    0%, 12.5% { filter: blur(34px) hue-rotate(0deg) saturate(1.4); }
+    100%      { filter: blur(34px) hue-rotate(360deg) saturate(1.4); }
+}
+
+/* Attention ping: an expanding, fading ring in the event's own category
+   color, echoing the "jumped here from a search" pulse. The first two shadow
+   layers reproduce .landing-week__ev's resting box-shadow so only the third
+   (ring) layer reads as motion. */
+@keyframes landing-wk-pulse {
+    0% {
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c, var(--lp-primary)) 28%, transparent),
+                    0 2px 12px hsla(268, 40%, 4%, 0.3),
+                    0 0 0 0 color-mix(in srgb, var(--c, var(--lp-primary)) 60%, transparent);
+    }
+    70% {
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c, var(--lp-primary)) 28%, transparent),
+                    0 2px 12px hsla(268, 40%, 4%, 0.3),
+                    0 0 0 11px color-mix(in srgb, var(--c, var(--lp-primary)) 0%, transparent);
+    }
+    100% {
+        box-shadow: inset 0 1px 0 color-mix(in srgb, var(--c, var(--lp-primary)) 28%, transparent),
+                    0 2px 12px hsla(268, 40%, 4%, 0.3),
+                    0 0 0 0 color-mix(in srgb, var(--c, var(--lp-primary)) 0%, transparent);
+    }
+}
+
+/* Colorway sweep: identical bodies under three names, so each act's class
+   flip restarts the animation. */
+@keyframes landing-cw-sweep-0 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-1 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-2 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-3 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-4 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-5 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+@keyframes landing-cw-sweep-6 {
+    from { opacity: 1; background-position-x: 130%; }
+    to   { opacity: 0; background-position-x: -30%; }
+}
+
+/* Colorway glow: identical bodies under per-act names (restart trick). On
+   each commit the shine eases down from the resting glow, holds low through
+   the ~0.6s color morph (28%-60%), then blooms back up as the act lands on an
+   exact rainbow color. The 0% and 100% poses both match .landing-cw__app's
+   base box-shadow, so there is no cut on entry or on revert. */
+@keyframes landing-cw-glow-0 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-1 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-2 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-3 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-4 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-5 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+@keyframes landing-cw-glow-6 {
+    0%       { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+    28%, 60% { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 26px color-mix(in srgb, var(--cw-accent) 8%, transparent); }
+    100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
+}
+
+/* ═══ Reduced motion: final poses, no pinning, no animation (handbook §7).
+   The engine also adds .is-reduced and never arms a scene, but this block
+   holds even if the engine misbehaves. ═══ */
+@media (prefers-reduced-motion: reduce) {
+    .landing *,
+    .landing *::before,
+    .landing *::after {
+        animation: none !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .landing-hero__e1, .landing-hero__e2, .landing-hero__e2b, .landing-hero__e3,
+    .landing-hero__e4, .landing-hero__e5,
+    .landing-aurora::before,
+    .landing-hero__gridsheet {
+        opacity: 1;
+    }
+
+    .landing-booking__stagebox { --vp: 0.5 !important; }
+    .landing-cw { --p: 1 !important; height: auto !important; }
+    .landing-proof { --p: 1 !important; height: auto !important; }
+    .landing-week { --p: 1 !important; height: auto !important; }
+    .landing-hero { --exit: 0 !important; height: auto !important; }
+    .landing-pricing { --p: 1 !important; height: auto !important; }
+}
