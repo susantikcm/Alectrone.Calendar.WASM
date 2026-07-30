@@ -1,4 +1,4 @@
-@page "/"
+﻿@page "/"
 @using System.Globalization
 @inject IJSRuntime JS
 @implements IAsyncDisposable
@@ -16,30 +16,39 @@
 
 @*
     WASM DEMO of the Alectrone.Calendar.Web landing page. Markup, scoped CSS
-    (Home.razor.css), and the scene engine (wwwroot/js/landing-scenes.js) are
-    ported verbatim from Components/Pages/LandingPage.razor in that host, with
-    two deliberate removals for this demo:
+    (Home.razor.css) and the scene engine (wwwroot/js/landing-scenes.js) are
+    generated from Components/Pages/LandingPage.razor in that host by
+    e2e/calendar/scripts/port-landing-to-demo.mjs. DO NOT hand-edit this file:
+    run the porter instead, or the next port will overwrite you, and a
+    hand-port is how this demo previously fell ten hours behind and lost the
+    autoplay engine, the Accounts scene and the booking pin without anyone
+    noticing.
 
-      - no sign-in / sign-up chrome (header auth buttons, the compact-bar
-        sign-in link, and every /Account/* CTA and footer link), and
-      - no pricing details (the plan grid, the Enterprise band, the pricing
-        rail stop, and the pricing nav / footer links).
+    Two deliberate removals for this demo, everything else verbatim:
+      - No auth chrome. There is no server behind this deploy, so every
+        /Account/* call to action and footer link would 404. The header keeps
+        its .landing__auth-actions container (it carries margin-left:auto and
+        hosts the mobile nav toggle) but holds no buttons.
+      - No pricing. No plan catalog ships here and the page quotes no price,
+        so the Pricing nav item, the #pricing scene, its chapter-rail stop and
+        the footer link are all absent.
+    Where a removed call to action carried a scene's visual weight, the button
+    is KEPT and repointed at the in-page chapter it introduces, so every
+    scene's composition and motion choreography are unchanged.
 
-    Where the original CTA carried the visual weight of a scene, the button is
-    kept and repointed at the in-page chapter it introduces, so the composition
-    (and its motion choreography) is unchanged.
+    Motion is progressive enhancement: landing-scenes.js only flips state
+    classes and publishes CSS custom properties; the scoped CSS performs every
+    transition. The engine is imported from OnAfterRenderAsync below (the Web
+    host uses a JS initializer instead, because "/" is static SSR there with no
+    circuit to run interop from). The one contract that CANNOT hold on
+    WebAssembly is the JavaScript-disabled pose - nothing renders at all
+    without the runtime - so the base (no .has-motion) CSS survives purely as
+    the reduced-motion and pre-arm pose.
 
-    Original structure and choreography follow the Marketing Motion Design
-    handbook (docs-content/Developers/MarketingPageMotionDesign.md): hook,
-    chapter statement, pose-morph demonstration, horizontal views film,
-    trip-wire performances, pinned proof, close.
-
-    Unlike the Blazor Server host (where "/" is static SSR and the engine is
-    armed by a JS initializer), this page is interactive from first render, so
-    it imports and drives the engine itself. Motion stays progressive
-    enhancement: the engine only flips state classes and publishes CSS custom
-    properties; the scoped CSS performs every transition, and its base pose is
-    the composed final frame.
+    Content rule: every claim on this page is verifiable in this repository.
+    Proof numbers are counted in code (SchedulerView, AccessManager
+    permissions, AES-GCM, the AI provider chain). No adoption statistics until
+    they are measured.
 *@
 
 <div id="calendar-landing" class="landing">
@@ -60,16 +69,18 @@
             </a>
 
             <nav id="landing-nav" class="landing__nav" aria-label="Marketing navigation">
+                @* In-page chapters only: this deploy has no other route and no
+                   sign-in endpoint, so every item lands on a scene that exists. *@
                 <a href="#schedule">Product</a>
                 <a href="#views">Views</a>
                 <a href="#booking">Booking</a>
                 <a href="#colorways">Colorways</a>
             </nav>
 
-            @* The auth buttons are gone in the demo; the container stays because
-               it carries `margin-left: auto` (it keeps the nav left-aligned
-               after the brand) and it hosts the mobile nav toggle. *@
             <div class="landing__auth-actions">
+                @* The auth buttons are gone in the demo; the container stays because
+                   it carries margin-left:auto (it keeps the nav left-aligned after
+                   the brand) and it hosts the mobile nav toggle. *@
                 <button type="button" class="landing__nav-toggle" aria-label="Menu"
                         aria-expanded="false" aria-controls="landing-nav">
                     <span class="landing__nav-toggle-bar"></span>
@@ -86,6 +97,7 @@
             <button type="button" class="landing-rail__link" data-rail="views"><span class="landing-rail__dot"></span><span class="landing-rail__label">Views</span></button>
             <button type="button" class="landing-rail__link" data-rail="booking"><span class="landing-rail__dot"></span><span class="landing-rail__label">Booking</span></button>
             <button type="button" class="landing-rail__link" data-rail="colorways"><span class="landing-rail__dot"></span><span class="landing-rail__label">Colorways</span></button>
+            <button type="button" class="landing-rail__link" data-rail="modes"><span class="landing-rail__dot"></span><span class="landing-rail__label">Accounts</span></button>
             <button type="button" class="landing-rail__link" data-rail="ai"><span class="landing-rail__dot"></span><span class="landing-rail__label">AI</span></button>
             <button type="button" class="landing-rail__link" data-rail="proof"><span class="landing-rail__dot"></span><span class="landing-rail__label">Proof</span></button>
         </div>
@@ -98,7 +110,7 @@
          line, fills, holds, and hands focus to its second line before the
          stage departs (T14). Scrolling up replays it in reverse. Base,
          mobile, and reduced motion keep the single-viewport composition. ══ *@
-    <section class="landing-hero" data-hero data-scene>
+    <section class="landing-hero" data-hero data-autoplay="4500" data-scene>
       <div class="landing-hero__stage">
         <div class="landing-hero__backdrop" aria-hidden="true">
             <span class="landing-aurora landing-aurora--violet" data-depth="90"></span>
@@ -109,8 +121,8 @@
 
         @* Editorial split: the copy holds the left column and the crafted week
            calendar the right. The copy's scroll overture is transform-driven,
-           so it plays here on the left exactly as it did centred; the two
-           columns never overlap, so no scrim is needed. *@
+           so it plays here on the left exactly as it did centred (the user's
+           requirement); the two columns never overlap, so no scrim is needed. *@
         <div class="landing-hero__layout">
             <div class="landing-hero__inner">
                 <p class="landing-eyebrow landing-hero__e1">Alectrone Calendar</p>
@@ -130,7 +142,16 @@
                     link to get booked, and an assistant that turns plain words
                     into events.
                 </p>
-                <div class="landing-hero__cta-row landing-hero__e4">
+                @* The two account shapes, named on the first screen and linked to
+                   the chapter that defines them, so a visitor never has to scroll
+                   to learn which one they are. It sits between the lede and the
+                   controls: the visitor knows which shape they are before they
+                   are asked to choose a button. *@
+                <a href="#modes" class="landing-hero__modes landing-hero__e4">
+                    <b>Personal</b> for your own calendar,
+                    <b>Workspace</b> when it is a team
+                </a>
+                <div class="landing-hero__cta-row landing-hero__e4b">
                     <a href="#schedule" class="landing__btn landing__btn--primary landing__btn--lg">
                         See it move
                     </a>
@@ -155,20 +176,37 @@
                     <span class="landing-hsun__corona"></span>
                     <span class="landing-hsun__path landing-hsun__path--outer"></span>
                     <span class="landing-hsun__path landing-hsun__path--inner"></span>
-                    <div class="landing-hsun__orbit">
+                    @* The orbit is a REAL dated week, not seven decorative dots:
+                       each seat carries its weekday and its own date, and one of
+                       them is today. Every seat renders the "Today" callout in
+                       markup and CSS shows it only under --on, so the engine can
+                       move today to the visitor's own day by flipping one class
+                       (localizeToday in landing-scenes.js) without inserting or
+                       moving a node. *@
+                    <div class="landing-hsun__orbit" data-hsun-orbit>
                         @{
                             var sunDays = new[] { "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun" };
                             var sunToday = ((int)_today.DayOfWeek + 6) % 7;
+                            var sunStep = 360.0 / 7.0;
                         }
+                        @* Today's tether: a hairline radius from the dial's edge out
+                           to today's seat. It rides inside the spinning group, so it
+                           stays locked to that seat, and it brightens with the seat
+                           as the pair sweeps the near arc. The dial points at today. *@
+                        <span class="landing-hsun__tether" data-hsun-tether
+                              style="--a:@((sunToday * sunStep).ToString("0.###", Inv))deg;--i:@sunToday"></span>
                         @for (var i = 0; i < 7; i++)
                         {
-                            var a = (i * (360.0 / 7.0)).ToString("0.###", Inv);
+                            var a = (i * sunStep).ToString("0.###", Inv);
                             var c = _dotPalette[i % _dotPalette.Length];
-                            <span class="landing-hsun__day@(i == sunToday ? " landing-hsun__day--on" : null)" style="--a:@(a)deg;--i:@i;--c:@c">
+                            <span class="landing-hsun__day@(i == sunToday ? " landing-hsun__day--on" : null)"
+                                  data-hsun-day="@i" style="--a:@(a)deg;--i:@i;--c:@c">
                                 <span class="landing-hsun__body">
                                     <span class="landing-hsun__depth">
+                                        <span class="landing-hsun__tag">Today</span>
                                         <span class="landing-hsun__dot"></span>
                                         <span class="landing-hsun__label">@sunDays[i]</span>
+                                        <span class="landing-hsun__date" data-hsun-date>@_weekDays[i].Day</span>
                                     </span>
                                 </span>
                             </span>
@@ -189,7 +227,7 @@
                                     var sw = isHour ? "1.1" : "0.7";
                                     <line x1="60" y1="9" x2="60" y2="@y2" transform="rotate(@tang 60 60)" stroke="@stroke" stroke-width="@sw" stroke-linecap="round" />
                                 }
-                                @* Hands at the real current time (client clock; decorative). *@
+                                @* Hands at the real current time (server clock; decorative). *@
                                 <line x1="60" y1="62.5" x2="60" y2="35" transform="rotate(@_clockHour 60 60)" stroke="hsla(268, 12%, 92%, 0.9)" stroke-width="2.4" stroke-linecap="round" />
                                 <line x1="60" y1="63.5" x2="60" y2="21" transform="rotate(@_clockMin 60 60)" stroke="hsla(268, 10%, 96%, 0.96)" stroke-width="1.6" stroke-linecap="round" />
                                 <circle cx="60" cy="60" r="2.6" fill="hsl(268, 24%, 90%)" />
@@ -214,7 +252,7 @@
          IS the pitch: your calendar grows into the team's canvas. The flip
          commits at 60% progress going down, 20% going up; the gap between
          them is the hysteresis dead zone. ══ *@
-    <section id="schedule" class="landing-week" data-pose data-chapter="schedule" aria-label="Team scheduling">
+    <section id="schedule" class="landing-week" data-pose data-autoplay="4000" data-chapter="schedule" aria-label="Team scheduling">
         <div class="landing-week__stage">
             <div class="landing-week__dawn" aria-hidden="true"></div>
 
@@ -246,7 +284,7 @@
                             </span>
                             <span class="landing-week__ev landing-week__ev--team" style="--c:hsl(220, 70%, 58%);--t:52;--h:16">
                                 <span class="landing-week__ev-title">Standup</span>
-                                <span class="landing-week__ev-time">13:00 &#183; 15 min</span>
+                                <span class="landing-week__ev-time">13:00 · 15 min</span>
                             </span>
                         </div>
                         <div class="landing-week__col">
@@ -336,13 +374,16 @@
 
             <div class="landing-week__band">
                 <div class="landing-week__captions">
+                    @* The two poses ARE the two account shapes, so the eyebrows
+                       name them: the words the visitor meets again on the
+                       #modes rule. *@
                     <div class="landing-week__cap landing-week__cap--1">
-                        <p class="landing-eyebrow">Smart scheduling</p>
+                        <p class="landing-eyebrow">Personal</p>
                         <h2 class="landing-week__title">Your week, at a glance</h2>
                         <p class="landing-week__desc">Day, week, and month views with drag-and-drop. Fast, focused, yours.</p>
                     </div>
                     <div class="landing-week__cap landing-week__cap--2">
-                        <p class="landing-eyebrow">Keep scrolling, it grows</p>
+                        <p class="landing-eyebrow">Workspace</p>
                         <h2 class="landing-week__title">The whole team, on one canvas</h2>
                         <p class="landing-week__desc">Shared calendars, role-based access, and live availability across your entire organization.</p>
                     </div>
@@ -357,8 +398,8 @@
          in landing-scenes.js with boundary release, so the page is never
          trapped). With JS off or reduced motion it is a plain native
          scroller. Mocks are decorative; the seven views are real: the
-         SchedulerView enum the product renders. ══ *@
-    <section id="views" class="landing-views" data-scene data-pin data-chapter="views" aria-label="Calendar views">
+         SchedulerView enum this app renders. ══ *@
+    <section id="views" class="landing-views" data-scene data-pin data-autoplay="7000" data-chapter="views" aria-label="Calendar views">
       <div class="landing-views__stage">
         <header class="landing-views__head">
             <p class="landing-eyebrow">The views</p>
@@ -389,7 +430,7 @@
                             <span class="lv-day__gutter"><b>08</b><b>10</b><b>12</b><b>14</b><b>16</b><b>18</b></span>
                             <span class="lv-day__track">
                                 <span class="lv-ev" style="--c:hsl(268, 60%, 58%);--t:6;--h:12"><b class="lv-ev__t">Design review</b><i class="lv-ev__m">09:00 - 09:45</i></span>
-                                <span class="lv-ev" style="--c:hsl(220, 70%, 58%);--t:26;--h:26"><b class="lv-ev__t">Deep work</b><i class="lv-ev__m">10:30 - 12:00 &#183; Focus</i></span>
+                                <span class="lv-ev" style="--c:hsl(220, 70%, 58%);--t:26;--h:26"><b class="lv-ev__t">Deep work</b><i class="lv-ev__m">10:30 - 12:00 · Focus</i></span>
                                 <span class="lv-ev" style="--c:hsl(38, 80%, 55%);--t:60;--h:11"><b class="lv-ev__t">Standup</b><i class="lv-ev__m">14:00</i></span>
                                 <span class="lv-ev" style="--c:hsl(160, 60%, 45%);--t:78;--h:14"><b class="lv-ev__t">1:1 with Sam</b><i class="lv-ev__m">16:00 - 16:30</i></span>
                                 <span class="lv-day__now" data-td-nowline style="--t:@_nowPct"></span>
@@ -544,20 +585,30 @@
          is on stage, the booking page demos itself: slots pop in, one gets
          picked, the confirmation lands. Scroll back up past it and return:
          it performs again, identically. ══ *@
-    <section id="booking" class="landing-booking" data-scene data-chapter="booking" aria-label="Booking pages">
+    <section id="booking" class="landing-booking" data-scene data-pin data-autoplay="3500" data-chapter="booking" aria-label="Booking pages">
+        <div class="landing-booking__pin">
         <div class="landing-booking__grid">
             <div class="landing-booking__copy">
                 <p class="landing-eyebrow">Booking pages</p>
-                <h2 class="landing-booking__title">Share one link.<br />Get booked.</h2>
+                @* Two lines, two beats. The runway fills them in reading order
+                   (the hero statement's grammar): line one while the Focus
+                   picker holds, line two across the turn, so the sentence
+                   finishes at the moment the card lands on the month. *@
+                <h2 class="landing-booking__title">
+                    <span class="landing-booking__title-line landing-booking__title-line--1">Share one link.</span>
+                    <span class="landing-booking__title-line landing-booking__title-line--2">Get booked.</span>
+                </h2>
                 <p class="landing-booking__desc">
                     Publish your availability as a public booking page. Visitors
                     pick from the slots that are still free, and the booking
                     lands straight on your calendar.
                 </p>
+                @* --i indexes each point into the runway: they light one after
+                   another as the scroll passes them, ahead of the flip. *@
                 <ul class="landing-booking__points">
-                    <li>One /book link for every page you publish</li>
-                    <li>Taken slots stay taken: double bookings are blocked</li>
-                    <li>Every booking tracked and managed in one place</li>
+                    <li style="--i:0">One /book link for every page you publish</li>
+                    <li style="--i:1">Taken slots stay taken: double bookings are blocked</li>
+                    <li style="--i:2">Every booking tracked and managed in one place</li>
                 </ul>
                 <a href="#colorways" class="landing__btn landing__btn--primary">Keep going</a>
             </div>
@@ -566,12 +617,12 @@
                 <div class="landing-booking__card">
                     <div class="landing-booking__head">
                         <span class="landing-booking__who">Book time with Maya Chen</span>
-                        <span class="landing-booking__meta">Product demo &#183; 30 min &#183; Video call</span>
+                        <span class="landing-booking__meta">Product demo · 30 min · Video call</span>
                     </div>
 
-                    @* Two views, one page. As the scene scrolls past centre the card
-                       morphs from the compact Focus picker to the month Calendar,
-                       then back on the way up (engine publishes --vp). *@
+                    @* Two views, one page. The scene PINS: scroll scrubs the card
+                       from the compact Focus picker to the month Calendar, holds on
+                       Calendar, then releases (engine publishes --p on the pin). *@
                     <div class="landing-booking__switch">
                         <span class="landing-booking__switch-thumb"></span>
                         <span class="landing-booking__switch-label">Focus</span>
@@ -592,21 +643,21 @@
                                 </div>
                             </div>
                             <div class="landing-booking__face landing-booking__face--back" aria-hidden="true">
-                                <span class="landing-booking__cal-month">@_bookingCalMonth</span>
+                                <span class="landing-booking__cal-month">August 2026</span>
                                 <div class="landing-booking__cal-grid">
                                     @foreach (var d in new[] { "M", "T", "W", "T", "F", "S", "S" })
                                     {
                                         <span class="landing-booking__cal-dow">@d</span>
                                     }
-                                    @* Monday-first leading blanks for the booking month. *@
-                                    @for (var b = 0; b < _bookingCalLead; b++)
+                                    @* Aug 1 2026 is a Saturday: 5 Monday-first leading blanks. *@
+                                    @for (var b = 0; b < 5; b++)
                                     {
                                         <span class="landing-booking__cal-pad"></span>
                                     }
-                                    @for (var day = 1; day <= _bookingCalDays; day++)
+                                    @for (var day = 1; day <= 31; day++)
                                     {
-                                        var sel = day == _bookingCalSelected;
-                                        var dot = _bookingCalDotDays.Contains(day);
+                                        var sel = day == 4;
+                                        var dot = day is 8 or 12 or 19 or 26;
                                         <span class="landing-booking__cal-day @(sel ? "landing-booking__cal-day--sel" : "") @(dot ? "landing-booking__cal-day--dot" : "")">@day</span>
                                     }
                                 </div>
@@ -618,10 +669,11 @@
                         <span class="landing-booking__toast-check">
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                         </span>
-                        Confirmed &#183; Tuesday 10:30 &#183; on your calendar
+                        Confirmed · Tuesday 10:30 · on your calendar
                     </div>
                 </div>
             </div>
+        </div>
         </div>
     </section>
 
@@ -632,7 +684,7 @@
          releases only when scroll commits a different act. One custom
          property (--cw) re-themes every surface; that is the pitch, and
          it is true of the token engine this platform ships. ══ *@
-    <section id="colorways" class="landing-cw" data-pin data-cwlab data-chapter="colorways" aria-label="Colorways">
+    <section id="colorways" class="landing-cw" data-pin data-cwlab data-autoplay="8000" data-chapter="colorways" aria-label="Colorways">
       <div class="landing-cw__stage">
         <div class="landing-cw__light" aria-hidden="true">
             <span class="landing-cw__beam landing-cw__beam--l"></span>
@@ -642,7 +694,7 @@
         </div>
 
         <header class="landing-cw__head">
-            <p class="landing-eyebrow landing-cw__eyebrow">Flagship app &#183; Colorways</p>
+            <p class="landing-eyebrow landing-cw__eyebrow">Flagship app · Colorways</p>
             <h2 class="landing-cw__title">One calendar. Every brand.</h2>
             <p class="landing-cw__desc">
                 Themed by the same design tokens the whole platform ships.
@@ -680,9 +732,9 @@
                 </div>
                 <div class="landing-cw__daypanel">
                     <span class="landing-cw__dlabel">@_cwDayLabel</span>
-                    <span class="landing-cw__slot landing-cw__slot--active">Design sync &#183; 09:00</span>
-                    <span class="landing-cw__slot">Customer demo &#183; 11:30</span>
-                    <span class="landing-cw__slot">Roadmap &#183; 14:00</span>
+                    <span class="landing-cw__slot landing-cw__slot--active">Design sync · 09:00</span>
+                    <span class="landing-cw__slot">Customer demo · 11:30</span>
+                    <span class="landing-cw__slot">Roadmap · 14:00</span>
                     <span class="landing-cw__book">Book a slot</span>
                 </div>
             </div>
@@ -713,52 +765,248 @@
       </div>
     </section>
 
-    @* ══ Scene 6b · AI: trip-wire performance (T3). The command types itself,
-         then the event lands on Friday. The motion demonstrates the claim:
-         plain language in, scheduled time out. ══ *@
-    <section id="ai" class="landing-ai" data-scene data-chapter="ai" aria-label="AI assistant">
-        <header class="landing-ai__header">
-            <p class="landing-eyebrow">AI assistant</p>
-            <h2 class="landing-ai__title">Say it. It's scheduled.</h2>
-            <p class="landing-ai__desc">
-                The built-in assistant turns plain language into events and
-                finds free time across calendars. Five AI providers stand
-                behind it, so one outage never takes it down.
-            </p>
-        </header>
+    @* ══ Scene 6a · SHAPES: the two account shapes, named. It sits after the
+         colorway theatre and before the AI scene, so it lands once the visitor
+         has seen the calendar, the views and the booking page: by here "the
+         same calendar, the same booking pages, the same seven views" refers to
+         things already on screen. A pinned runway
+         (T2) whose instrument is a SEAT RULE, because the seat count is the
+         real difference between the lanes (CalendarPlans.PlanLane): Personal
+         is a single point at one seat, Workspace is the span that follows, up
+         to the 300-seat ceiling. The personal bank is already lit when the
+         scene arrives (those capabilities are already yours); the workspace
+         bank rises into the field word by word as the reader travels the
+         span, because that is precisely what an organization adds.
 
-        <div class="landing-ai__stagebox" aria-hidden="true">
-            <div class="landing-ai__bar">
-                <span class="landing-ai__mark">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="18" height="18">
-                        <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
-                        <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
-                        <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
-                    </svg>
-                </span>
-                <span class="landing-ai__type">Lunch with Maya on Friday at noon</span>
-            </div>
-            <div class="landing-ai__strip">
-                <span class="landing-ai__day">Mon</span>
-                <span class="landing-ai__day">Tue</span>
-                <span class="landing-ai__day">Wed</span>
-                <span class="landing-ai__day">Thu</span>
-                <span class="landing-ai__day landing-ai__day--hit">
-                    Fri
-                    <span class="landing-ai__chip">
-                        <span class="landing-ai__chip-title">Lunch with Maya</span>
-                        <span class="landing-ai__chip-time">12:00 &#183; 1h</span>
-                    </span>
-                </span>
+         Content rule: every word in the two fields is a ticked row of the
+         plan comparison matrix (WelcomePage._compareSections, in CalendarPlans
+         order) or a fact on the plan record itself. A word sits on the
+         Personal side only if Free or Individual carries it; it sits on the
+         Workspace side only if both personal plans lack it and the business
+         lane has it. So this scene cannot promise what the tiers do not. ══ *@
+    <section id="modes" class="landing-modes" data-scene data-pin data-autoplay="5000" data-chapter="modes"
+             aria-label="Personal and Workspace accounts">
+        <div class="landing-modes__stage">
+            <div class="landing-modes__dawn" aria-hidden="true"></div>
+
+            <div class="landing-modes__inner">
+                @* Editorial split, the hero's idiom: the statement holds the left
+                   column and the qualification sits at its baseline on the right,
+                   so the top band is composed rather than half empty. *@
+                <header class="landing-modes__head">
+                    <div class="landing-modes__head-lead">
+                        <p class="landing-eyebrow">Account shapes</p>
+                        <h2 class="landing-modes__title">
+                            Personal, or <span class="landing-accent">Workspace.</span>
+                        </h2>
+                    </div>
+                    <p class="landing-modes__desc">
+                        The product does not change when the team arrives: the same
+                        calendar, the same booking pages, the same seven views. What
+                        changes is how many people are on it, and whether there is
+                        anything to administer.
+                    </p>
+                </header>
+
+                @* The instrument. Decorative: every fact it draws is written in
+                   the plate copy below it, so nothing is lost to assistive tech. *@
+                <div class="landing-modes__rule" aria-hidden="true">
+                    <span class="landing-modes__rule-unit">Seats</span>
+                    <span class="landing-modes__rule-line"></span>
+                    <span class="landing-modes__rule-span"></span>
+                    @for (var seats = 0; seats <= SeatCeiling; seats += 10)
+                    {
+                        var s = seats == 0 ? 1 : seats;
+                        var major = s is 1 or 100 or 200 or SeatCeiling;
+                        var x = ((s - 1) / (double)(SeatCeiling - 1) * 100.0)
+                            .ToString("0.##", Inv);
+                        <span class="landing-modes__tick @(major ? "landing-modes__tick--major" : null)" style="--x:@x">
+                            @if (major)
+                            {
+                                <i class="landing-modes__tick-n">@s</i>
+                            }
+                        </span>
+                    }
+                    <span class="landing-modes__node"></span>
+                    <span class="landing-modes__reader"></span>
+                </div>
+
+                <div class="landing-modes__banks">
+                    <div class="landing-modes__bank landing-modes__bank--personal">
+                        <div class="landing-modes__plate">
+                            <span class="landing-modes__plate-ix">01</span>
+                            <h3 class="landing-modes__plate-name">Personal</h3>
+                            <p class="landing-modes__plate-seats">One seat</p>
+                            <p class="landing-modes__plate-line">
+                                Your own calendar, billed flat or not at all. No members,
+                                no roles, nothing to administer.
+                            </p>
+                        </div>
+                        <ul class="landing-modes__field">
+                            @for (var i = 0; i < _personalWords.Length; i++)
+                            {
+                                var w = _personalWords[i];
+                                <li class="landing-modes__word @(w.Lead ? "landing-modes__word--lead" : null)"
+                                    style="--x:@w.X;--y:@w.Y;--i:@i">@w.Text</li>
+                            }
+                        </ul>
+                    </div>
+
+                    <div class="landing-modes__bank landing-modes__bank--work">
+                        <div class="landing-modes__plate">
+                            <span class="landing-modes__plate-ix">02</span>
+                            <h3 class="landing-modes__plate-name">Workspace</h3>
+                            <p class="landing-modes__plate-seats">Two to @SeatCeiling seats</p>
+                            <p class="landing-modes__plate-line">
+                                @* Not "everything on the left": the banks stack below the
+                                   pin breakpoint, so this names the other shape rather
+                                   than pointing at where it happens to sit. *@
+                                Everything a personal account has, plus the people layer:
+                                the admin console at /admin, and per-user billing that
+                                only starts once a second person exists.
+                            </p>
+                        </div>
+                        <ul class="landing-modes__field">
+                            @for (var i = 0; i < _workspaceWords.Length; i++)
+                            {
+                                var w = _workspaceWords[i];
+                                <li class="landing-modes__word @(w.Lead ? "landing-modes__word--lead" : null)"
+                                    style="--x:@w.X;--y:@w.Y;--i:@i">@w.Text</li>
+                            }
+                        </ul>
+                    </div>
+                </div>
             </div>
         </div>
     </section>
 
+    @* ══ Scene 6b · AI: a pinned runway (T2), in the same height family as
+         its neighbours. Scroll IS the assistant. The runway holds at both
+         ends - the slight stop a pin buys - and plays four acts between
+         them: the sentence writes itself, it resolves into event fields,
+         the provider chain answers, the week is read for conflicts, and the
+         event lands on the hour that was clear. Every beat is scrubbed from
+         --p, so scrolling back plays it in reverse; base, mobile and reduced
+         motion render the composed result with no runway at all. ══ *@
+    <section id="ai" class="landing-ai" data-scene data-pin data-autoplay="6500" data-chapter="ai" aria-label="AI assistant">
+      <div class="landing-ai__stage">
+        <div class="landing-ai__dawn" aria-hidden="true"></div>
+
+        <div class="landing-ai__inner">
+            <div class="landing-ai__copy">
+                <p class="landing-eyebrow">AI assistant</p>
+                <h2 class="landing-ai__title">Say it. <span class="landing-accent">It's scheduled.</span></h2>
+                <p class="landing-ai__desc">
+                    Write the sentence you would have said out loud. The assistant
+                    reads it as an event, checks it against every calendar you have
+                    joined, and books the hour once it knows the hour is clear.
+                </p>
+
+                @* The failover claim, drawn. The nodes are deliberately
+                   unlabelled: the order is configuration (FallbackOptions
+                   .ProviderOrder), so no named provider is depicted as the one
+                   that went quiet. *@
+                <div class="landing-ai__chain" aria-hidden="true">
+                    <span class="landing-ai__chain-track"></span>
+                    <span class="landing-ai__chain-live"></span>
+                    @for (var n = 0; n < 5; n++)
+                    {
+                        var role = n switch { 0 => " landing-ai__node--skip", 1 => " landing-ai__node--ans", _ => "" };
+                        <span class="landing-ai__node@(role)" style="--i:@n"></span>
+                    }
+                </div>
+                <p class="landing-ai__chain-note">
+                    Five providers stand behind the assistant: Claude, Gemini, Groq,
+                    Mistral and OpenRouter. The request takes the first one that
+                    answers, so a provider going quiet is a detour, not an outage.
+                </p>
+            </div>
+
+            @* The instrument. Decorative: every fact it draws is stated in the
+               copy beside it, so nothing is lost to assistive tech. *@
+            <div class="landing-ai__console" aria-hidden="true">
+                <div class="landing-ai__bar">
+                    <span class="landing-ai__mark">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="18" height="18">
+                            <circle cx="16" cy="16" r="15" fill="hsl(268, 62%, 58%)" opacity="0.15"/>
+                            <circle cx="16" cy="16" r="10" fill="hsl(268, 62%, 58%)" opacity="0.3"/>
+                            <circle cx="16" cy="16" r="5"  fill="hsl(268, 62%, 58%)"/>
+                        </svg>
+                    </span>
+                    <span class="landing-ai__typewrap">
+                        <span class="landing-ai__type">Lunch with Maya on Friday at noon</span>
+                    </span>
+                </div>
+
+                <ul class="landing-ai__fields">
+                    @for (var f = 0; f < _aiFields.Length; f++)
+                    {
+                        <li class="landing-ai__field" style="--i:@f">
+                            <span class="landing-ai__field-k">@_aiFields[f].Key</span>
+                            <span class="landing-ai__field-v">@_aiFields[f].Value</span>
+                        </li>
+                    }
+                </ul>
+
+                <div class="landing-ai__week">
+                    <div class="landing-ai__weekhead">
+                        @for (var d = 0; d < _aiDays.Length; d++)
+                        {
+                            <span class="landing-ai__daylabel @(d == AiHitDay ? "landing-ai__daylabel--hit" : null)">@_aiDays[d]</span>
+                        }
+                    </div>
+
+                    <div class="landing-ai__hours">
+                        @foreach (var mark in _aiHourMarks)
+                        {
+                            <span class="landing-ai__hour" style="--y:@AiAt(mark)">@AiClock(mark)</span>
+                        }
+                    </div>
+
+                    <div class="landing-ai__cols">
+                        <span class="landing-ai__rules"></span>
+                        @for (var d = 0; d < _aiWeek.Length; d++)
+                        {
+                            <div class="landing-ai__col" style="--i:@d">
+                                @foreach (var b in _aiWeek[d])
+                                {
+                                    <span class="landing-ai__busy"
+                                          style="--t:@AiAt(b.Start);--h:@AiSpan(b.Start, b.End)"></span>
+                                }
+                                @if (d == AiHitDay)
+                                {
+                                    <span class="landing-ai__drop" style="--t:@AiAt(AiHitStart)"></span>
+                                    <span class="landing-ai__free"
+                                          style="--t:@AiAt(AiHitStart);--h:@AiSpan(AiHitStart, AiHitEnd)">Free</span>
+                                    <span class="landing-ai__chip"
+                                          style="--t:@AiAt(AiHitStart);--h:@AiSpan(AiHitStart, AiHitEnd)">
+                                        <span class="landing-ai__chip-title">Lunch with Maya</span>
+                                        <span class="landing-ai__chip-time">12:00 - 13:00</span>
+                                    </span>
+                                }
+                            </div>
+                        }
+                        <span class="landing-ai__scan"></span>
+                    </div>
+                </div>
+
+                <p class="landing-ai__confirm">
+                    <span class="landing-ai__confirm-check">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                    </span>
+                    On your calendar · Friday 12:00 · no conflicts
+                </p>
+            </div>
+        </div>
+      </div>
+    </section>
+
+
     @* ══ Scene 7 · PROOF: pinned overture (T2/T15/T17). Dawn rises with
          scroll, a billboard numeral anchors the stage, counters earn the
-         numbers as the visitor arrives. Every number is counted in the
-         product repository; adoption statistics are banned until measured. ══ *@
-    <section class="landing-proof" data-pin data-chapter="proof" aria-label="Product facts">
+         numbers as the visitor arrives. Every number is counted in this
+         repository; adoption statistics are banned until measured. ══ *@
+    <section class="landing-proof" data-pin data-autoplay="4500" data-chapter="proof" aria-label="Product facts">
         <div class="landing-proof__stage">
             <div class="landing-proof__dawn" aria-hidden="true"></div>
             <span class="landing-proof__billboard" aria-hidden="true">256</span>
@@ -785,8 +1033,13 @@
         </div>
     </section>
 
-    @* ══ Scene 10 · Close: the encore. The demo keeps the encore composition
-         but not its plan names, so no pricing detail survives here. ══ *@
+    @* Scene 8 (PRICING) is deliberately absent here: no plan catalog ships with
+       the demo and it quotes no price, so the nav item, the chapter-rail stop and
+       the footer link went with it. Nothing replaces it - the film runs straight
+       from Proof into the close. *@
+
+    @* ══ Scene 10 · Close: the encore. The demo keeps the encore composition but
+         not its plan names, so no pricing detail survives here. ══ *@
     <section class="landing-close" data-scene>
         <div class="landing-close__glow" aria-hidden="true"></div>
         <div class="landing__section-inner">
@@ -817,6 +1070,9 @@
                 </svg>
                 <span>Alectrone</span>
             </div>
+            @* In-page destinations and a mail link only. The demo serves one
+               route, so /privacy, /terms, /cookies and every /Account/* link
+               would 404 on the static host. *@
             <div class="landing__footer-links">
                 <div class="landing__footer-col">
                     <h4>Product</h4>
@@ -827,6 +1083,7 @@
                 <div class="landing__footer-col">
                     <h4>More</h4>
                     <a href="#colorways">Colorways</a>
+                    <a href="#modes">Personal or Workspace</a>
                     <a href="#ai">AI assistant</a>
                     <a href="mailto:sales@alectrone.com">Email sales</a>
                 </div>
@@ -838,7 +1095,7 @@
                 </div>
             </div>
             <div class="landing__footer-bottom">
-                <span>&copy; @DateTime.Now.Year Alectrone. All rights reserved.</span>
+                <span>&copy; 2018-@DateTime.Now.Year Alectrone. All rights reserved.</span>
             </div>
         </div>
     </footer>
@@ -846,15 +1103,110 @@
 
 @code {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
+
+    // The most seats any self-serve business plan can hold, which is the whole
+    // instrument the #modes seat rule draws. MIRRORS the single source of truth,
+    // CalendarPlans.BusinessSeatCeiling in Alectrone.Calendar.Web/Services/
+    // CalendarPlans.cs; it is restated rather than referenced because that
+    // catalog lives inside the Web host and this demo ships no plan model.
+    // If the ceiling ever moves there, move it here too.
+    private const int SeatCeiling = 300;
+
     private static readonly string[] _monthAbbrevs = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
     private static readonly int[] _cwDotDays = { 3, 8, 15, 24 };
-    private static readonly int[] _bookingCalDotDays = { 8, 12, 19, 26 };
 
     // A category color per view-mock event, kept to the four-color palette
     // (purple / blue / green / amber) the landing mocks established. Time is
     // optional: only tall enough chips carry a start time (short blocks show
     // just the title, the way a real week column ellipsises a busy day).
     private readonly record struct Blk(string Name, string C, int T, int H, string? Time = null);
+
+    // ── Scene 6c · the two account shapes ─────────────────────────────────
+    // One word in a shape field. Lead words are the tier's headline capability
+    // and carry display weight; the rest are the quieter second tier. X and Y
+    // are percentages of the field box: the fields are hand-composed staggered
+    // two-column drifts, not a random cloud, and collapse to a wrapped flow
+    // below the pin breakpoint.
+    private readonly record struct ShapeWord(string Text, bool Lead, double X, double Y);
+
+    // Ticked for Free or Individual in the comparison matrix, so a personal
+    // account already carries them. "Seven views" is the SchedulerView count the
+    // proof scene states; the rest are matrix rows or CalendarPlans facts.
+    private static readonly ShapeWord[] _personalWords =
+    [
+        new("Booking pages", true, 1, 0),
+        new("Availability", true, 62, 3),
+        new("Seven views", true, 6, 21),
+        new("Stripe payments", true, 52, 25),
+        new("Google & 365 sync", true, 0, 42),
+        new("Reminders", false, 66, 47),
+        new("Buffer times", false, 10, 64),
+        new("Recurring events", false, 56, 68),
+        new("Field encryption", false, 3, 85),
+    ];
+
+    // Absent from BOTH personal plans in the matrix and present in the business
+    // lane: these are the capabilities an organization adds, not a paywall on
+    // your own calendar.
+    private static readonly ShapeWord[] _workspaceWords =
+    [
+        new("Admin console", true, 1, 0),
+        new("Members & seats", true, 56, 3),
+        new("Roles & access", true, 7, 21),
+        new("Integrations", true, 64, 25),
+        new("Webhooks", true, 0, 42),
+        new("Shared calendars", false, 60, 47),
+        new("Round-robin", false, 10, 64),
+        new("Resources & rooms", false, 58, 68),
+        new("REST API", false, 3, 85),
+        new("Booking analytics", false, 52, 89),
+    ];
+
+    // ── Scene 6b · the assistant's week ───────────────────────────────────
+    // Nine hours (09:00-18:00) of one work week: the commitments the assistant
+    // reads before it answers. The scene's claim is that it books the asked-for
+    // hour ONCE it knows the hour is clear, so Friday 12:00-13:00 is drawn as
+    // the one gap the sentence lands in; the rest of the week is deliberately
+    // not clear. Start / End are decimal hours and the CSS positions every
+    // block as a fraction of the window, so the drawing stays true to scale.
+    private const double AiDayStart = 9, AiDayEnd = 18;
+    private const double AiHitStart = 12, AiHitEnd = 13;
+    private const int AiHitDay = 4; // Friday, the day the sentence names
+
+    private readonly record struct AiBusy(double Start, double End);
+    private readonly record struct AiField(string Key, string Value);
+
+    private static readonly string[] _aiDays = { "Mon", "Tue", "Wed", "Thu", "Fri" };
+    private static readonly double[] _aiHourMarks = { 9, 11, 13, 15, 17 };
+
+    // What the sentence resolves to. These are the four things an event needs,
+    // read straight out of "Lunch with Maya on Friday at noon".
+    private static readonly AiField[] _aiFields =
+    [
+        new("Title", "Lunch with Maya"),
+        new("Day", "Friday"),
+        new("Start", "12:00"),
+        new("Length", "1 hour"),
+    ];
+
+    private static readonly AiBusy[][] _aiWeek =
+    [
+        [new(9.5, 11), new(13, 14.5)],
+        [new(9, 10.5), new(11.5, 13), new(15.5, 17)],
+        [new(10, 12), new(14, 15)],
+        [new(9, 10.5), new(12.5, 14), new(16, 17.5)],
+        [new(9.5, 11.5), new(14, 15.5)],
+    ];
+
+    // Position (0..1) of an hour in the drawn window, and the height of a span.
+    private static string AiAt(double hour) =>
+        ((hour - AiDayStart) / (AiDayEnd - AiDayStart)).ToString("0.####", Inv);
+
+    private static string AiSpan(double from, double to) =>
+        ((to - from) / (AiDayEnd - AiDayStart)).ToString("0.####", Inv);
+
+    private static string AiClock(double hour) =>
+        ((int)hour).ToString("00", Inv) + ":" + ((int)((hour % 1) * 60)).ToString("00", Inv);
 
     private string _monthLabel = "";
     private string _bookingDayLabel = "";
@@ -863,18 +1215,10 @@
     private int _currentMonthIndex;
     private int _cwDay;
 
-    // Booking-card month face: derived from the booking date so the grid shape,
-    // the selected day, and the label are always calendar-true (the Server host
-    // hard-coded August 2026 here).
-    private string _bookingCalMonth = "";
-    private int _bookingCalLead;
-    private int _bookingCalDays;
-    private int _bookingCalSelected;
-
-    // ── View-strip mock date model. Rendered from the client clock, so every
-    //    [data-td*] slot already shows the visitor's own day / date / month /
-    //    year; landing-scenes.js re-derives them anyway (it is written for the
-    //    server-rendered host), which is a harmless no-op here. ─────────────
+    // ── View-strip mock date model. Server-rendered so the no-JS pose is
+    //    calendar-true; landing-scenes.js re-derives every [data-td*] slot
+    //    from the visitor's OWN clock on load, so the preview always shows
+    //    the viewer's local day / date / month / year. ──────────────────────
     private DateTime _today;
     private string _dayDow = "", _dayNum = "", _dayMon = "", _nowPct = "0";
     // Hero time-dial hand angles (degrees clockwise from 12), decorative.
@@ -898,10 +1242,6 @@
     private MonthShape[] _yearMonths = System.Array.Empty<MonthShape>();
     private int _todayDay;
 
-    // Scene engine handle (progressive enhancement; the page is complete
-    // without it, so every failure path is swallowed).
-    private IJSObjectReference? _motion;
-
     private string DotColor(int day)
     {
         var i = System.Array.IndexOf(_monthDotDays, day);
@@ -915,13 +1255,18 @@
         _ => _today.AddDays(off).ToString("ddd", Inv),
     };
 
-    // Absolute date beside each agenda group heading.
+    // Absolute date beside each agenda group heading (re-derived client-side
+    // from [data-td-reldate] so it always matches the visitor's local clock).
     private string RelDate(int off) => _today.AddDays(off).ToString("MMM d", Inv);
 
     protected override void OnInitialized()
     {
-        // Decorative mock dates track the clock so they never go stale.
-        // Invariant culture keeps the English month and day names the mocks assume.
+        // On WebAssembly DateTime.Now is already the VISITOR's clock, so the
+        // mocks below are calendar-true on first paint and landing-scenes.js's
+        // localizeToday() only re-derives the same values. (In the Web host
+        // this runs on the server and the localizer is what makes the preview
+        // local.) Invariant culture keeps the English month and day names the
+        // mocks assume, whatever locale the browser reports.
         var now = DateTime.Now;
         var today = now.Date;
         _today = today;
@@ -997,14 +1342,6 @@
         if (daysToTuesday == 0) daysToTuesday = 7;
         var bookingDate = today.AddDays(daysToTuesday);
         _bookingDayLabel = bookingDate.ToString("dddd, MMMM d", Inv);
-
-        // Booking-card month face: the booking date's own month, Monday-first.
-        var bookingFirst = new DateTime(bookingDate.Year, bookingDate.Month, 1);
-        _bookingCalMonth = bookingDate.ToString("MMMM yyyy", Inv);
-        _bookingCalLead = ((int)bookingFirst.DayOfWeek + 6) % 7;
-        _bookingCalDays = DateTime.DaysInMonth(bookingDate.Year, bookingDate.Month);
-        _bookingCalSelected = bookingDate.Day;
-
         // The colorway vignette shows a stylized 28-cell month labeled with
         // the booking date's month, so "Tuesday N" is always calendar-true;
         // clamp so the highlighted day always exists in the grid.
@@ -1013,40 +1350,50 @@
         _cwMonthLabel = bookingDate.ToString("MMMM yyyy", Inv);
     }
 
+    // ── Scene engine ──────────────────────────────────────────────────────
+    // Imported and armed on first render, when the landing root is guaranteed
+    // to be in the DOM. init() is idempotent (it destroys any previous run
+    // first) and the engine only flips state classes, publishes custom
+    // properties, and writes textContent on aria-hidden mock nodes: it never
+    // inserts, moves or removes a node, so it cannot fight the renderer.
+    //
+    // Every failure here is swallowed on purpose. The engine is enhancement:
+    // without it the base CSS still renders every scene in its composed final
+    // pose, so a blocked or missing module costs the motion, not the page.
+    private IJSObjectReference? _motion;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender)
-        {
-            return;
-        }
-
+        if (!firstRender) return;
         try
         {
             _motion = await JS.InvokeAsync<IJSObjectReference>("import", "./js/landing-scenes.js");
             await _motion.InvokeVoidAsync("init", "calendar-landing");
         }
-        catch (Exception ex) when (ex is JSException or InvalidOperationException)
+        catch (JSException)
         {
-            // Motion is progressive enhancement; the page is fully usable
-            // without it (base CSS renders the composed final pose).
+            // Module failed to load or threw while arming: keep the static pose.
+        }
+        catch (OperationCanceledException)
+        {
+            // Navigated away mid-import.
         }
     }
 
     public async ValueTask DisposeAsync()
     {
-        if (_motion is null)
-        {
-            return;
-        }
-
+        if (_motion is null) return;
         try
         {
             await _motion.InvokeVoidAsync("destroy");
             await _motion.DisposeAsync();
         }
-        catch (Exception ex) when (ex is JSException or InvalidOperationException or ObjectDisposedException)
+        catch (JSException) { }
+        catch (JSDisconnectedException) { }
+        catch (OperationCanceledException) { }
+        finally
         {
-            // Tearing down; nothing left to clean up on the client.
+            _motion = null;
         }
     }
 }

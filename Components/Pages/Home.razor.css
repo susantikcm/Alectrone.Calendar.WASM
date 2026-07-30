@@ -351,8 +351,9 @@
      0.00-0.32  the supporting copy recedes, the title shrinks and rises,
                 the statement grows from subtitle to display line (--sg)
      0.06-0.48  the statement's two-beat gradient fill sweeps (--st)
-     0.42-0.55  held pose; the line handoff plays here
-     0.55-0.90  the whole stage departs (content faster than backdrop)
+     0.48-0.62  held pose; the text rests in place here, a clear beat before
+                anything moves (the line handoff plays here)
+     0.62-0.95  the whole stage departs (content faster than backdrop)
    Base, mobile, and reduced motion sit at --exit 0: the composed
    single-viewport hero with the statement as a readable subtitle. ═══ */
 .landing-hero {
@@ -380,16 +381,16 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    transform: translateY(calc(max(var(--exit) - 0.55, 0) * -6rem));
+    transform: translateY(calc(max(var(--exit) - 0.62, 0) * -6rem));
 }
 
 .landing-hero__inner {
     position: relative;
     max-width: 800px;
-    transform: translateY(calc(max(var(--exit) - 0.55, 0) * -12rem));
+    transform: translateY(calc(max(var(--exit) - 0.62, 0) * -12rem));
     /* The stage stays lit through the growth and hold beats, then empties
        before it unpins. */
-    opacity: calc(1 - max(var(--exit) - 0.55, 0) * 3);
+    opacity: calc(1 - max(var(--exit) - 0.62, 0) * 3);
 }
 
 /* The title yields the frame: it shrinks, rises, and dims to scenery as
@@ -401,7 +402,8 @@
 
 .landing-hero .landing-eyebrow,
 .landing-hero .landing-hero__lede,
-.landing-hero .landing-hero__cta-row {
+.landing-hero .landing-hero__cta-row,
+.landing-hero .landing-hero__modes {
     opacity: calc(1 - min(var(--exit) / 0.22, 1) * 0.92);
 }
 
@@ -562,7 +564,7 @@
 .landing-hsun {
     position: absolute;
     inset: 0;
-    --R: clamp(120px, 18vw, 204px);
+    --R: clamp(134px, 21.3vw, 240px);
     --orbit: 90s;
     transform:
         rotateX(28deg)
@@ -610,9 +612,11 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: calc(var(--R) * 1.85);
-    height: calc(var(--R) * 1.85);
-    margin: calc(var(--R) * -0.925) 0 0 calc(var(--R) * -0.925);
+    /* Tied to the DIAL, not the orbit: the pool lights the centre, so when the
+       week moved out it stayed put instead of blooming under the seats. */
+    width: calc(var(--R) * 1.68);
+    height: calc(var(--R) * 1.68);
+    margin: calc(var(--R) * -0.84) 0 0 calc(var(--R) * -0.84);
     border-radius: 50%;
     background: radial-gradient(circle,
         hsla(272, 74%, 60%, 0.13) 0%,
@@ -649,9 +653,12 @@
             mask: radial-gradient(circle, transparent calc(100% - 2px), #000 calc(100% - 2px));
     filter: drop-shadow(0 0 8px hsla(268, 86%, 74%, 0.45));
 }
+/* The inner track has to sit midway between the bezel and the week's orbit, or
+   it reads as a halo clamped to the dial's edge. It follows the gap: with the
+   dial at 0.46R and the week at R, midway is 0.73R, so the track is 1.46R. */
 .landing-hsun__path--inner {
-    width: calc(var(--R) * 1.16);
-    height: calc(var(--R) * 1.16);
+    width: calc(var(--R) * 1.46);
+    height: calc(var(--R) * 1.46);
     background: conic-gradient(from 0deg,
         hsla(268, 70%, 80%, 0) 60deg,
         hsla(272, 82%, 84%, 0.28) 180deg,
@@ -689,47 +696,165 @@
 /* Depth pulse: peaks (near, large, bright, sharp) at 50%, aligned to the near
    arc by the per-seat delay; troughs small, dim, and soft on the far side. The
    base pose (reduced motion / no animation) shows every seat evenly. */
+/* The DOT is the seat's anchor, not the block of type: the depth box collapses
+   to a point on the orbit track and the dot, the weekday, the date and today's
+   callout are hung off it. A flowed stack would centre the whole column on the
+   track instead, which pushes the dot inside the ring and (because the type
+   stays screen-upright while the track is radial) leaves today's tether landing
+   short on one side of the wheel and past the dot on the other. Collapsing to a
+   point also puts the depth scale's origin ON the dot, so the dot holds its
+   place on the track while its annotation swells and recedes. */
 .landing-hsun__depth {
+    position: relative;
     display: block;
+    width: 0;
+    height: 0;
     opacity: 0.92;
     animation: landing-hsun-depth var(--orbit) ease-in-out infinite;
     animation-delay: calc(var(--i) * var(--orbit) * -1 / 7);
 }
+.landing-hsun__dot,
+.landing-hsun__tag,
+.landing-hsun__label,
+.landing-hsun__date {
+    position: absolute;
+    left: 50%;
+    white-space: nowrap;
+    text-align: center;
+}
 .landing-hsun__dot {
-    display: block;
-    width: 10px;
-    height: 10px;
-    margin: 0 auto;
+    top: 50%;
+    translate: -50% -50%;
+    width: 11px;
+    height: 11px;
     border-radius: 50%;
     background: var(--c, var(--lp-primary));
     box-shadow:
         0 0 10px color-mix(in srgb, var(--c, var(--lp-primary)) 70%, transparent),
         0 0 3px hsla(0, 0%, 100%, 0.45);
 }
+/* The weekday: an index label, so it is set as one (uppercase, tracked) and
+   large enough to read at the far side of the wheel. The drop shadow is what
+   keeps it legible where it crosses a nebula wisp. */
 .landing-hsun__label {
-    display: block;
-    margin-top: 6px;
-    font-size: 0.64rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-align: center;
-    white-space: nowrap;
-    color: var(--lp-text-muted);
+    top: 11px;
+    translate: -50% 0;
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: hsl(268, 12%, 76%);
+    text-shadow: 0 1px 7px hsla(268, 44%, 5%, 0.9);
+    /* Optical: tracking hangs off the last letter, so pull the run back. */
+    text-indent: 0.16em;
 }
-/* Today: the lit day. A larger core, a hairline halo ring, and a soft pulse, so
-   it stays the clear accent wherever it rides the wheel. */
+/* Each seat's own date, in the technical cut. This is the datum that turns the
+   ring from seven decorative dots into the visitor's actual week. */
+.landing-hsun__date {
+    top: 32px;
+    translate: -50% 0;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.68rem;
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: hsla(268, 14%, 88%, 0.46);
+    text-shadow: 0 1px 6px hsla(268, 44%, 5%, 0.85);
+}
+/* The callout is authored on every seat and shown on one, so today can move to
+   the visitor's day by class alone. */
+.landing-hsun__tag { display: none; }
+
+/* ── Today: the one focus on the wheel. Four marks, each doing separate work:
+   a larger core (it is the day you are in), a hairline iris halo (the
+   instrument's "this one", in the brand accent rather than the day's own
+   category colour, so the day keeps its hue), the callout word, and its date
+   in lit numerals. Its depth pulse runs on a raised floor, so unlike the other
+   six it never dims or softens into the far side. ── */
 .landing-hsun__day--on .landing-hsun__dot {
-    width: 13px;
-    height: 13px;
+    width: 17px;
+    height: 17px;
     box-shadow:
-        0 0 0 3px hsla(268, 70%, 72%, 0.22),
-        0 0 18px var(--c, var(--lp-primary)),
-        0 0 6px hsla(0, 0%, 100%, 0.8);
-    animation: landing-hsun-todaypulse 3.2s ease-in-out infinite;
+        0 0 22px color-mix(in srgb, var(--c, var(--lp-primary)) 70%, transparent),
+        0 0 7px hsla(0, 0%, 100%, 0.75);
+}
+/* A pool of light on the plane under today's seat: the eye lands here before it
+   reads a single word. One accent, low alpha, no second bloom anywhere. */
+.landing-hsun__day--on .landing-hsun__dot::before {
+    content: "";
+    position: absolute;
+    inset: -19px;
+    border-radius: 50%;
+    background: radial-gradient(circle,
+        color-mix(in srgb, var(--c, var(--lp-primary)) 30%, transparent) 0%,
+        transparent 70%);
+}
+.landing-hsun__day--on .landing-hsun__dot::after {
+    content: "";
+    position: absolute;
+    inset: -8px;
+    border-radius: 50%;
+    border: 1px solid hsla(268, 76%, 80%, 0.5);
+    opacity: 0.8;
+    animation: landing-hsun-todaypulse 3.6s ease-in-out infinite;
+}
+/* Today's type clears the larger dot: the annotation offsets grow with it. */
+.landing-hsun__day--on .landing-hsun__label { top: 15px; }
+.landing-hsun__day--on .landing-hsun__date { top: 36px; }
+.landing-hsun__day--on .landing-hsun__tag {
+    display: block;
+    bottom: 15px;
+    translate: -50% 0;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.26em;
+    text-transform: uppercase;
+    color: var(--lp-primary-soft);
+    text-indent: 0.26em;
+    text-shadow: 0 1px 6px hsla(268, 44%, 5%, 0.9);
 }
 .landing-hsun__day--on .landing-hsun__label {
+    font-weight: 750;
     color: var(--lp-text);
-    text-shadow: 0 0 12px hsla(268, 80%, 70%, 0.6);
+    text-shadow:
+        0 0 14px hsla(268, 80%, 70%, 0.5),
+        0 1px 7px hsla(268, 44%, 5%, 0.9);
+}
+.landing-hsun__day--on .landing-hsun__date {
+    font-size: 0.88rem;
+    color: var(--lp-primary-soft);
+}
+.landing-hsun__day--on .landing-hsun__depth {
+    opacity: 1;
+    animation-name: landing-hsun-depth-on;
+}
+
+/* Today's tether: a hairline radius reaching from the dial's edge out to today's
+   seat, so the composition states its one idea outright - the week turns, and
+   the dial is pointing at the day you are in. It lives inside the spinning
+   group at today's angle (--a, the same seat convention: 0deg = top, clockwise),
+   is transparent inside the dial's 0.46R footprint, and brightens on the same
+   phase as its seat, so the pair reads as one object travelling the near arc. */
+.landing-hsun__tether {
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    width: 1px;
+    /* Stops at the near edge of today's dot (which sits exactly on the track at
+       R), so the line arrives and terminates AT the day instead of piercing it. */
+    height: calc(var(--R) - 8px);
+    margin-left: -0.5px;
+    transform-origin: bottom center;
+    transform: rotate(var(--a, 0deg));
+    background: linear-gradient(to top,
+        hsla(268, 80%, 76%, 0) 46%,
+        hsla(268, 82%, 78%, 0.26) 66%,
+        hsla(268, 86%, 82%, 0.6) 87%,
+        hsla(268, 90%, 86%, 0.88) 100%);
+    filter: drop-shadow(0 0 3px hsla(268, 82%, 72%, 0.35));
+    opacity: 0.8;
+    animation: landing-hsun-tether var(--orbit) ease-in-out infinite;
+    animation-delay: calc(var(--i, 0) * var(--orbit) * -1 / 7);
 }
 
 /* ── The centre: a PRECISE TIME DIAL, not a glowing orb. The week orbits time
@@ -743,9 +868,16 @@
     position: absolute;
     top: 50%;
     left: 50%;
-    width: calc(var(--R) * 0.68);
-    height: calc(var(--R) * 0.68);
-    margin: calc(var(--R) * -0.34) 0 0 calc(var(--R) * -0.34);
+    /* Sized to hold its own against the 2R orbit: the dial is the hero's one
+       focus, so it takes a little under half the disc's diameter. Size is the
+       ONLY thing that makes it noticeable here; the face itself stays plain.
+       0.92R against the wider orbit keeps the dial at the same rendered size it
+       had at 1.04R of the old 214px radius, so the week moved OUT rather than
+       the dial shrinking: the far seats no longer graze the bezel as they cross
+       the top of the wheel (user 2026-07-31). */
+    width: calc(var(--R) * 0.92);
+    height: calc(var(--R) * 0.92);
+    margin: calc(var(--R) * -0.46) 0 0 calc(var(--R) * -0.46);
     border-radius: 50%;
 }
 /* The dial face: borderless. A soft dark vignette under the ticks that dissolves
@@ -790,6 +922,7 @@
 .landing-hero__e2b { animation: landing-rise-sub 0.8s var(--lp-ease-enter) 0.5s backwards; }
 .landing-hero__e3 { animation: landing-rise 0.8s var(--lp-ease-enter) 0.65s backwards; }
 .landing-hero__e4 { animation: landing-rise 0.8s var(--lp-ease-enter) 0.85s backwards; }
+.landing-hero__e4b { animation: landing-rise 0.8s var(--lp-ease-enter) 1s backwards; }
 .landing-hero__e5 { animation: landing-cue-fade 1s ease 1.6s backwards; }
 
 .landing-hero__title {
@@ -804,7 +937,7 @@
     font-size: 1.2rem;
     color: var(--lp-text-muted);
     max-width: 600px;
-    margin: 0 auto 36px;
+    margin: 0 auto 22px;
     line-height: 1.7;
 }
 
@@ -813,6 +946,37 @@
     justify-content: center;
     gap: 16px;
     flex-wrap: wrap;
+}
+
+/* The two account shapes on the first screen: a quiet line between the lede and
+   the controls, the two words carrying the weight. It is a link to the chapter
+   that defines them, and the affordance is the whole line lighting up, not a
+   glyph. Its own bottom margin owns the gap down to the buttons. */
+.landing-hero__modes {
+    display: inline-block;
+    margin: 0 0 30px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--lp-text-muted);
+    text-decoration: none;
+    transition: color var(--lp-transition), border-color var(--lp-transition);
+    border-bottom: 1px solid transparent;
+}
+
+.landing-hero__modes b {
+    font-weight: 650;
+    color: var(--lp-text);
+}
+
+.landing-hero__modes:hover,
+.landing-hero__modes:focus-visible {
+    color: var(--lp-text);
+    border-bottom-color: hsla(268, 50%, 62%, 0.5);
+}
+
+.landing-hero__modes:hover b,
+.landing-hero__modes:focus-visible b {
+    color: var(--lp-primary-soft);
 }
 
 /* Scroll cue: the explicit invitation that the page continues (T11). */
@@ -1951,12 +2115,25 @@
 
 /* ═══ Scene 5 · BOOKING (T3 trip-wire performance) ═══ */
 .landing-booking {
+    --p: 0;
     min-height: 100vh;
+    background: var(--lp-bg);
+}
+
+/* Exempt the tall pin from the document y-snap, exactly like .landing-views;
+   otherwise the section's top fights the scrub. */
+.landing > .landing-booking {
+    scroll-snap-align: none;
+}
+
+.landing-booking__pin {
     display: flex;
     align-items: center;
+    min-height: 100vh;
     padding: 5rem 24px;
-    background: var(--lp-bg);
-    /* Clips the stagebox spotlight glow so it can never widen the body. */
+    /* Clips the stagebox spotlight glow so it can never widen the body.
+       overflow on the sticky element itself does not break its stickiness;
+       only a clipping ANCESTOR would, and none of ours clip. */
     overflow: hidden;
 }
 
@@ -1969,6 +2146,12 @@
     align-items: center;
 }
 
+/* The copy column's runway variable: inert (0) until the desktop pin drives
+   it, so the column composes normally everywhere else. */
+.landing-booking__copy {
+    --recede: 0;
+}
+
 .landing-booking__title {
     margin: 0 0 1rem;
     font-size: clamp(1.9rem, 3.8vw, 2.9rem);
@@ -1976,6 +2159,13 @@
     line-height: 1.12;
     letter-spacing: -0.02em;
     color: var(--lp-text);
+}
+
+/* Base pose is a plain, fully-read headline; the scrubbed fill is armed only
+   on the desktop runway (see the choreography block), so JS-off, mobile and
+   reduced motion never see a half-lit sentence. */
+.landing-booking__title-line {
+    display: block;
 }
 
 .landing-booking__desc {
@@ -1996,6 +2186,8 @@
 }
 
 .landing-booking__points li {
+    /* Fully lit at rest; the runway hands each point its own --lit ramp. */
+    --lit: 1;
     position: relative;
     padding-left: 24px;
     font-size: 0.95rem;
@@ -2022,6 +2214,9 @@
 .landing-booking__stagebox {
     --vp: 0.5;
     --peak: calc(1 - max(2 * var(--vp) - 1, 1 - 2 * var(--vp)));
+    /* Runway swell (0 -> 1): declared here, driven only on the desktop pin.
+       Off the runway it stays 0, so every transform below is a no-op. */
+    --swell: 0;
     position: relative;
     display: flex;
     justify-content: center;
@@ -2037,6 +2232,10 @@
     pointer-events: none;
     background: radial-gradient(ellipse at center, hsla(268, 62%, 58%, 0.22), transparent 70%);
     opacity: var(--peak);
+    /* The glow outruns the card as it swells: the spotlight opens wider than
+       the thing it lights, which is what makes the growth read as approach
+       rather than as a zoom. */
+    transform: scale(calc(1 + var(--swell) * 0.22));
 }
 
 .landing-booking__card {
@@ -2131,10 +2330,12 @@
     flex-shrink: 0;
 }
 
-/* ── Dual-view booking: the card morphs Focus <-> Calendar as the scene scrolls
-   past centre. Driven by --vp (inherited from .landing-booking__stagebox). At
-   the resting pose (--vp 0.5) the Focus layer is fully lit and Calendar hidden,
-   so an idle engine or reduced motion still shows a clean, correct card. ── */
+/* ── Dual-view booking: the pinned card flips Focus -> Calendar as page-scroll
+   scrubs --p (0..1, published by the engine on the [data-pin] section). The
+   flip runs over --p 0.15..0.5 then HOLDS on Calendar to ~1 (the pause the pin
+   buys) before the stage releases. At the base pose (--p 0) the Focus layer is
+   fully lit and Calendar hidden, so an idle engine or reduced motion still
+   shows a clean, correct card. ── */
 .landing-booking__switch {
     position: relative;
     display: grid;
@@ -2164,7 +2365,7 @@
     background: hsla(268, 62%, 58%, 0.26);
     box-shadow: 0 0 16px hsla(268, 62%, 58%, 0.25);
     /* Slides from Focus to Calendar in sync with the card flip. */
-    transform: translateX(calc(clamp(0, calc((var(--vp) - 0.5) / 0.28), 1) * 100%));
+    transform: translateX(calc(clamp(0, calc((var(--p) - 0.3) / 0.4), 1) * 100%));
 }
 
 .landing-booking__flipwrap {
@@ -2176,9 +2377,18 @@
     width: 100%;
     min-height: 196px;
     transform-style: preserve-3d;
-    /* Focus (front) at rest; flips to reveal the Calendar (back) as the card
-       scrolls past viewport centre, and flips back on the way up. */
-    transform: rotateY(calc(clamp(0, calc((var(--vp) - 0.5) / 0.28), 1) * 180deg));
+    /* Three beats over the pinned runway, symmetric both ways: a FOCUS hold
+       (--p 0..0.3), the flip (0.3..0.7), then a CALENDAR hold (0.7..1) before
+       the stage releases to the next section. Scroll-position driven, so
+       scrolling back up reverses through the same three beats.
+
+       The split favours the holds over the turn (user 2026-07-30: "add bit
+       longer delay when flipping" + "faster"). Both faces carry the reading —
+       the booking on one, the month on the other — while the card mid-turn is
+       edge-on and carries nothing, so dwell belongs to the faces and the turn
+       should be got over with. At a 540px pin that is 162px on Focus, a 216px
+       turn, then 162px on Calendar. */
+    transform: rotateY(calc(clamp(0, calc((var(--p) - 0.3) / 0.4), 1) * 180deg));
 }
 .landing-booking__face {
     position: absolute;
@@ -2198,6 +2408,21 @@
     .landing-booking__flip,
     .landing-booking__switch-thumb {
         transform: none;
+    }
+    /* No pin under reduced motion: collapse the runway to one normal screen so
+       there is never a tall stretch of dead scroll with a frozen card. The
+       runway itself is declared in the desktop block further down the sheet,
+       so these have to carry !important to win on source order. */
+    .landing-booking,
+    .landing.has-motion .landing-booking {
+        height: auto !important;
+        min-height: 100vh;
+    }
+    .landing-booking__pin,
+    .landing.has-motion .landing-booking__pin {
+        position: static !important;
+        height: auto !important;
+        min-height: 100vh;
     }
 }
 
@@ -2251,51 +2476,162 @@
     background: var(--lp-primary-soft);
 }
 
-/* ═══ Scene 6 · AI (T3 trip-wire performance) ═══ */
+/* ═══ Scene 6b · AI (T2 pin + scrub) ════════════════════════════════════
+   The whole performance is written against five act variables, never
+   against --p directly. They default to 1 here, so the base sheet - no
+   JavaScript, reduced motion, or anything below the pin breakpoint -
+   renders the finished result: the sentence typed, the fields resolved,
+   the chain answered, the week read, the event on Friday. Only the
+   desktop .has-motion block further down rewrites them as functions of
+   --p, and only there does the scene become a runway. */
 .landing-ai {
+    --p: 1;
+    --type: 1;   /* the sentence writes itself           */
+    --parse: 1;  /* it resolves into event fields        */
+    --route: 1;  /* the provider chain answers           */
+    --scan: 1;   /* the week is read for conflicts       */
+    --land: 1;   /* the event takes the hour it asked for */
     position: relative;
-    padding: 7rem 24px 7.5rem;
     background: var(--lp-bg-deep);
     border-top: 1px solid var(--lp-border);
-    text-align: center;
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-ai__stage {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 6rem 24px;
     overflow: hidden;
 }
 
-.landing-ai::before {
-    content: "";
+/* Light is a material (T17): the pool comes up as the visitor commits. */
+.landing-ai__dawn {
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background: radial-gradient(ellipse 55% 55% at 50% 8%,
-        hsla(268, 62%, 58%, 0.13), transparent 70%);
+    background: radial-gradient(ellipse 70% 55% at 68% 92%,
+        hsla(268, 62%, 58%, 0.2), hsla(243, 65%, 60%, 0.07) 52%, transparent 76%);
+    opacity: calc(0.22 + var(--p) * 0.78);
+    transform: translateY(calc((1 - var(--p)) * 18%));
 }
 
-.landing-ai__header {
+.landing-ai__inner {
     position: relative;
-    max-width: 40rem;
-    margin: 0 auto 2.75rem;
+    display: grid;
+    grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+    align-items: center;
+    gap: 3.5rem;
+    width: 100%;
+    max-width: var(--lp-max-width);
+    margin: 0 auto;
 }
 
 .landing-ai__title {
-    margin: 0 0 0.75rem;
-    font-size: clamp(1.9rem, 3.8vw, 2.9rem);
+    margin: 0 0 1rem;
+    font-size: clamp(1.9rem, 3.6vw, 3rem);
     font-weight: 800;
+    line-height: 1.1;
     letter-spacing: -0.02em;
     color: var(--lp-text);
 }
 
 .landing-ai__desc {
-    margin: 0 auto;
-    max-width: 32rem;
+    margin: 0;
+    max-width: 30rem;
     font-size: 1.05rem;
     line-height: 1.7;
     color: var(--lp-text-muted);
 }
 
-.landing-ai__stagebox {
+/* ── The provider chain. Five nodes on one track: the request enters, the
+   first node does not answer and fades out of the route, the second does
+   and holds the light. Nodes three to five never have to do anything -
+   that is the headroom, and it is the point. ── */
+.landing-ai__chain {
     position: relative;
-    max-width: 36rem;
-    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: min(19rem, 100%);
+    height: 1rem;
+    margin: 2.25rem 0 0.9rem;
+}
+
+.landing-ai__chain-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 1px;
+    background: linear-gradient(to right,
+        hsla(268, 30%, 70%, 0.28), hsla(268, 30%, 70%, 0.07));
+}
+
+/* The request itself, resting on whichever node took it. */
+.landing-ai__chain-live {
+    position: absolute;
+    top: 50%;
+    left: calc(var(--route) * 25%);
+    width: 7px;
+    height: 7px;
+    margin: -3.5px 0 0 -3.5px;
+    border-radius: 50%;
+    background: hsl(268, 70%, 82%);
+    box-shadow: 0 0 12px 2px hsla(268, 62%, 62%, 0.7);
+    opacity: clamp(0, var(--route) * 9, 1);
+}
+
+.landing-ai__node {
+    position: relative;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1px solid hsla(268, 24%, 62%, 0.35);
+    background: hsl(268, 18%, 15%);
+}
+
+/* Tried first, went quiet: it recedes as the route moves past it, but never
+   all the way out - a node that vanished would read as a rendering gap
+   rather than as a provider that is still there and still in the chain. */
+.landing-ai__node--skip {
+    background: transparent;
+    border-color: hsla(268, 24%, 62%, calc(0.45 - var(--route) * 0.2));
+    opacity: calc(1 - var(--route) * 0.3);
+}
+
+/* Answered: the node the request settles on. */
+.landing-ai__node--ans {
+    border-color: hsla(268, 62%, 72%, calc(0.3 + var(--route) * 0.55));
+    background: color-mix(in srgb,
+        var(--lp-primary) calc(var(--route) * 100%), hsl(268, 18%, 15%));
+    box-shadow: 0 0 calc(var(--route) * 18px) hsla(268, 62%, 58%, 0.55);
+}
+
+.landing-ai__chain-note {
+    margin: 0;
+    max-width: 27rem;
+    font-size: 0.85rem;
+    line-height: 1.65;
+    color: var(--lp-text-muted);
+}
+
+/* ── The console ── */
+.landing-ai__console {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+/* Focus pull. While the week is being read, the sentence and the fields it
+   produced step back, and they come forward again as the event lands. It is
+   the one thing on the console that changes without being the subject: the
+   read is what matters for those two seconds, so the read gets the light.
+   Both ends of the runway sit at full weight, so neither hold is affected. */
+.landing-ai__bar,
+.landing-ai__fields {
+    --pull: calc(1 - 0.45 * var(--scan) * (1 - var(--land)));
 }
 
 .landing-ai__bar {
@@ -2306,8 +2642,10 @@
     border-radius: 14px;
     border: 1px solid hsla(268, 30%, 60%, 0.3);
     background: hsla(268, 18%, 13%, 0.85);
-    box-shadow: 0 16px 50px hsla(268, 40%, 4%, 0.5), 0 0 46px hsla(268, 62%, 58%, 0.12);
+    box-shadow: 0 16px 50px hsla(268, 40%, 4%, 0.5),
+                0 0 calc(26px + var(--type) * 26px) hsla(268, 62%, 58%, 0.12);
     text-align: left;
+    opacity: var(--pull);
 }
 
 /* The brand mark anchors the assistant bar: Alectrone's own identity where
@@ -2318,65 +2656,223 @@
     flex-shrink: 0;
 }
 
+/* The wrapper is exactly as wide as the finished sentence, so the clip on
+   the line below is a true percentage of the typed text and the caret
+   always sits on the last character written. */
+.landing-ai__typewrap {
+    display: block;
+    width: max-content;
+    max-width: 100%;
+    min-width: 0;
+}
+
 .landing-ai__type {
-    display: inline-block;
+    display: block;
     overflow: hidden;
     white-space: nowrap;
-    max-width: 100%;
+    max-width: calc(var(--type) * 100%);
     font-size: 0.98rem;
     font-weight: 500;
     color: var(--lp-text);
     border-right: 2px solid var(--lp-primary-soft);
     padding-right: 2px;
-    animation: landing-caret 0.9s steps(1) infinite;
 }
 
-.landing-ai__strip {
+/* ── What the sentence resolved to ── */
+.landing-ai__fields {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-top: 22px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    opacity: var(--pull);
 }
 
-.landing-ai__day {
-    position: relative;
-    min-height: 7.5rem;
-    padding-top: 10px;
-    border-radius: 12px;
-    border: 1px solid var(--lp-border);
-    background: var(--lp-bg-card);
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.05em;
+.landing-ai__field {
+    --a: clamp(0, (var(--parse) - var(--i) * 0.16) / 0.36, 1);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    border-radius: 10px;
+    border: 1px solid hsla(268, 30%, 60%, calc(0.1 + var(--a) * 0.22));
+    background: hsla(268, 18%, 13%, calc(0.25 + var(--a) * 0.4));
+    opacity: var(--a);
+    translate: 0 calc((1 - var(--a)) * 0.6rem);
+}
+
+.landing-ai__field-k {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
     text-transform: uppercase;
     color: var(--lp-text-muted);
-    transition: border-color var(--lp-motion-scene) ease, box-shadow var(--lp-motion-scene) ease;
 }
 
-.landing-ai__day--hit {
-    border-color: hsla(268, 62%, 68%, 0.55);
-    box-shadow: 0 0 26px hsla(268, 62%, 58%, 0.22);
+.landing-ai__field-v {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--lp-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ── The week, drawn to scale over 09:00-18:00 ── */
+.landing-ai__week {
+    display: grid;
+    grid-template-columns: 2.9rem minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+    column-gap: 10px;
+    row-gap: 8px;
+    height: clamp(18rem, 42vh, 28rem);
+}
+
+.landing-ai__weekhead {
+    grid-column: 2;
+    grid-row: 1;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.landing-ai__daylabel {
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--lp-text-muted);
+}
+
+.landing-ai__daylabel--hit {
+    color: color-mix(in srgb,
+        var(--lp-primary-soft) calc(var(--land) * 100%), var(--lp-text-muted));
+}
+
+.landing-ai__hours {
+    position: relative;
+    grid-column: 1;
+    grid-row: 2;
+}
+
+.landing-ai__hour {
+    position: absolute;
+    right: 0;
+    top: calc(var(--y) * 100%);
+    transform: translateY(-0.4em);
+    font-size: 0.6rem;
+    font-variant-numeric: tabular-nums;
+    color: hsla(268, 10%, 60%, 0.75);
+}
+
+.landing-ai__cols {
+    position: relative;
+    grid-column: 2;
+    grid-row: 2;
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+}
+
+/* One hairline an hour, so every block reads against a real time axis. */
+.landing-ai__rules {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(to bottom,
+        hsla(268, 20%, 100%, 0.055) 1px, transparent 1px);
+    background-size: 100% calc(100% / 9);
+}
+
+.landing-ai__col {
+    position: relative;
+    border-radius: 10px;
+    border: 1px solid var(--lp-border);
+    background: hsla(268, 16%, 13%, 0.5);
+    overflow: hidden;
+}
+
+/* Someone else's time. Each column fills in as the read passes over it. */
+.landing-ai__busy {
+    --b: clamp(0, (var(--scan) - var(--i) * 0.185) / 0.15, 1);
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: calc(var(--t) * 100%);
+    height: calc(var(--h) * 100%);
+    border-radius: 5px;
+    background: hsla(268, 14%, 30%, 0.55);
+    border-left: 2px solid hsla(268, 20%, 52%, 0.6);
+    opacity: var(--b);
+    transform: scaleY(calc(0.55 + var(--b) * 0.45));
+    transform-origin: top;
+}
+
+/* The gap the sentence asked for, once the read has proved it is a gap. */
+.landing-ai__free {
+    --f: clamp(0, (var(--scan) - 0.84) / 0.16, 1);
+    position: absolute;
+    left: 3px;
+    right: 3px;
+    top: calc(var(--t) * 100%);
+    height: calc(var(--h) * 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    border: 1px dashed hsla(268, 62%, 72%, 0.5);
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: hsla(268, 62%, 78%, 0.8);
+    /* Clears at the HALFWAY point of the landing, not at the end of it: the
+       marker and the chip occupy the same hour, so two half-lit labels would
+       otherwise overprint each other while the event flies in. */
+    opacity: calc(var(--f) * (1 - clamp(0, var(--land) * 2, 1)));
+}
+
+/* The event falling out of the command bar into the hour it named. */
+.landing-ai__drop {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    width: 2px;
+    margin-left: -1px;
+    height: calc(var(--t) * 100%);
+    background: linear-gradient(to bottom,
+        transparent, hsla(268, 62%, 72%, 0.75));
+    transform: scaleY(var(--land));
+    transform-origin: top;
+    opacity: calc(clamp(0, var(--land) * 5, 1) * (1 - clamp(0, (var(--land) - 0.55) / 0.45, 1)));
 }
 
 .landing-ai__chip {
     position: absolute;
-    left: 8px;
-    right: 8px;
-    top: 42%;
+    left: 3px;
+    right: 3px;
+    top: calc(var(--t) * 100%);
+    height: calc(var(--h) * 100%);
     display: flex;
     flex-direction: column;
+    justify-content: center;
     gap: 1px;
-    padding: 7px 9px;
-    border-radius: 8px;
+    padding: 4px 6px;
+    border-radius: 6px;
     border: 1px solid hsla(268, 62%, 62%, 0.45);
-    background: hsla(268, 62%, 58%, 0.2);
+    background: hsla(268, 62%, 58%, 0.22);
+    box-shadow: 0 0 calc(var(--land) * 24px) hsla(268, 62%, 58%, 0.3);
     text-align: left;
-    text-transform: none;
-    letter-spacing: 0;
+    opacity: clamp(0, var(--land) * 2.4, 1);
+    translate: 0 calc((1 - var(--land)) * -2.4rem);
+    scale: calc(0.9 + var(--land) * 0.1);
 }
 
+/* The chip lives inside one fifth of the week, so its title is sized to fit
+   a real day column rather than to be read from across the room. */
 .landing-ai__chip-title {
-    font-size: 0.72rem;
+    font-size: 0.6rem;
     font-weight: 700;
     color: var(--lp-text);
     white-space: nowrap;
@@ -2397,9 +2893,50 @@
 }
 
 .landing-ai__chip-time {
-    font-size: 0.64rem;
+    font-size: 0.55rem;
     font-weight: 500;
-    color: var(--lp-text-muted);
+    color: hsla(268, 10%, 84%, 0.75);
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+/* The read: one beam crossing the week, gone by the time it has crossed. */
+.landing-ai__scan {
+    position: absolute;
+    top: -4px;
+    bottom: -4px;
+    left: calc(var(--scan) * 100%);
+    width: 2px;
+    margin-left: -1px;
+    pointer-events: none;
+    background: linear-gradient(to bottom,
+        transparent, hsla(268, 62%, 76%, 0.9) 22%, hsla(268, 62%, 76%, 0.9) 78%, transparent);
+    box-shadow: 0 0 24px 5px hsla(268, 62%, 58%, 0.3);
+    opacity: calc(clamp(0, var(--scan) * 12, 1) * (1 - clamp(0, (var(--scan) - 0.88) / 0.12, 1)));
+}
+
+.landing-ai__confirm {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--lp-text);
+    opacity: clamp(0, (var(--land) - 0.5) / 0.5, 1);
+    translate: 0 calc((1 - clamp(0, (var(--land) - 0.5) / 0.5, 1)) * 0.5rem);
+}
+
+.landing-ai__confirm-check {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.22);
+    color: var(--lp-green);
 }
 
 /* ═══ Scene 6b · COLORWAYS: theater (T20) + colorway lab (T21) ═══════
@@ -2782,6 +3319,312 @@
 
 .landing-cw__cta { flex-shrink: 0; }
 
+/* ═══ Scene 6a · SHAPES: Personal and Workspace ══════════════════════
+   The instrument is a seat rule, because seats are the actual difference
+   between the lanes: Personal is a lit node at one seat, Workspace is the
+   span that follows to the 300-seat ceiling, and a reader travels it. The
+   two banks hang under their own stretch of the rule, so the composition
+   is deliberately asymmetric (a point on the left, a span on the right)
+   rather than two mirrored halves.
+
+   Base CSS renders the composed final pose: rule read to its end, both
+   fields lit. Every --p expression lives in the desktop .has-motion block
+   at the foot of this file, so a phone (where the engine still writes --p
+   onto the unpinned section) can never hide a word that is on screen. */
+.landing-modes {
+    position: relative;
+    background: hsl(268, 22%, 7%);
+    border-top: 1px solid var(--lp-border);
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-modes__stage {
+    position: relative;
+    padding: 6rem 24px;
+    overflow: hidden;
+}
+
+/* One pool of light, low and off-centre under the workspace span: the side
+   that gains something is the side that lights up (T17). */
+.landing-modes__dawn {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse 62% 52% at 68% 104%,
+        hsla(268, 62%, 58%, 0.22), hsla(243, 60%, 58%, 0.06) 56%, transparent 78%);
+}
+
+.landing-modes__inner {
+    position: relative;
+    /* Explicit width: on the pinned stage this is a column flex item, and its
+       auto side margins would otherwise suppress the cross-axis stretch and
+       size the banks off the header's max-width instead of the container. */
+    width: 100%;
+    max-width: var(--lp-max-width);
+    margin: 0 auto;
+}
+
+.landing-modes__head {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: 3rem;
+    align-items: end;
+    margin: 0 0 3.25rem;
+}
+
+.landing-modes__title {
+    margin: 0;
+    font-size: clamp(1.9rem, 4vw, 3rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--lp-text);
+}
+
+.landing-modes__desc {
+    margin: 0;
+    padding-bottom: 0.35rem;
+    max-width: 44ch;
+    font-size: 1.02rem;
+    line-height: 1.6;
+    color: var(--lp-text-muted);
+}
+
+/* ── The seat rule. Ticks every ten seats, numerals at 1 / 100 / 200 / 300,
+      all in the technical cut so they read as graduations and not as copy. ── */
+.landing-modes__rule {
+    position: relative;
+    height: 4.25rem;
+    margin: 0 0 2.75rem;
+}
+
+.landing-modes__rule-unit {
+    position: absolute;
+    left: 0;
+    top: 0;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.62rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: hsla(268, 12%, 70%, 0.55);
+}
+
+.landing-modes__rule-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 1.85rem;
+    height: 1px;
+    background: linear-gradient(90deg,
+        hsla(268, 14%, 82%, 0.34), hsla(268, 14%, 82%, 0.14) 70%, hsla(268, 14%, 82%, 0.06));
+}
+
+/* The workspace stretch of the measure, lit along its length. */
+.landing-modes__rule-span {
+    position: absolute;
+    /* Seat 2 of 300 on a 1..300 rule. */
+    left: 0.33%;
+    right: 0;
+    top: 1.8rem;
+    height: 2px;
+    transform-origin: left center;
+    background: linear-gradient(90deg,
+        var(--lp-primary), hsl(268, 58%, 52%) 62%, hsla(268, 62%, 58%, 0.55));
+    box-shadow: 0 0 14px hsla(268, 62%, 58%, 0.35);
+}
+
+.landing-modes__tick {
+    position: absolute;
+    left: calc(var(--x) * 1%);
+    top: 1.85rem;
+    width: 1px;
+    height: 0.5rem;
+    background: hsla(268, 14%, 84%, 0.2);
+}
+
+.landing-modes__tick--major {
+    height: 0.95rem;
+    background: hsla(268, 14%, 88%, 0.42);
+}
+
+.landing-modes__tick-n {
+    position: absolute;
+    left: 0;
+    top: 1.2rem;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.68rem;
+    font-style: normal;
+    font-variant-numeric: tabular-nums;
+    color: var(--lp-text-muted);
+    transform: translateX(-50%);
+}
+/* The end numerals stay inside the rule instead of hanging off it. */
+.landing-modes__tick:first-of-type .landing-modes__tick-n { transform: none; }
+.landing-modes__tick:last-of-type .landing-modes__tick-n { transform: translateX(-100%); }
+
+/* Seat one: a node, not a span. A personal account is a single point on
+   this measure, and it is lit from the moment the scene arrives. */
+.landing-modes__node {
+    position: absolute;
+    left: 0;
+    top: 1.85rem;
+    width: 9px;
+    height: 9px;
+    margin: -4px 0 0 -1px;
+    border-radius: 50%;
+    background: var(--lp-text);
+    box-shadow: 0 0 0 1px hsla(268, 14%, 88%, 0.28), 0 0 12px hsla(268, 20%, 92%, 0.45);
+}
+
+/* The reader: a hairline crossing the rule with one small square on the
+   line. It carries no numerals, so nothing here can drift out of step with
+   the seat facts stated in the plate copy. */
+.landing-modes__reader {
+    position: absolute;
+    left: 100%;
+    top: 1.15rem;
+    width: 1px;
+    height: 2.1rem;
+    background: linear-gradient(180deg,
+        hsla(268, 70%, 76%, 0.1), hsl(268, 70%, 76%) 34%, hsla(268, 70%, 76%, 0.12));
+}
+
+.landing-modes__reader::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 0.66rem;
+    width: 6px;
+    height: 6px;
+    transform: translate(-50%, -50%) rotate(45deg);
+    background: hsl(268, 76%, 80%);
+    box-shadow: 0 0 12px hsla(268, 70%, 68%, 0.8);
+}
+
+/* ── The two banks. Widths follow the rule: a point, then a span. ── */
+.landing-modes__banks {
+    display: grid;
+    grid-template-columns: 0.84fr 1.16fr;
+    gap: 3rem;
+    align-items: start;
+}
+
+.landing-modes__plate {
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--lp-border);
+}
+
+.landing-modes__plate-ix {
+    display: block;
+    margin-bottom: 0.55rem;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
+    font-variant-numeric: tabular-nums;
+    color: hsla(268, 12%, 70%, 0.6);
+}
+
+.landing-modes__plate-name {
+    margin: 0 0 0.3rem;
+    font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+    font-weight: 800;
+    letter-spacing: -0.015em;
+    /* Explicit so a persisted light theme's base h3 colour cannot darken it. */
+    color: var(--lp-text);
+}
+
+.landing-modes__bank--work .landing-modes__plate-name {
+    color: color-mix(in srgb, var(--lp-primary-soft) 55%, var(--lp-text));
+}
+
+.landing-modes__plate-seats {
+    margin: 0 0 0.7rem;
+    font-family: var(--ux-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-variant-numeric: tabular-nums;
+    color: var(--lp-text-muted);
+}
+
+.landing-modes__bank--work .landing-modes__plate-seats {
+    color: var(--lp-primary-soft);
+}
+
+.landing-modes__plate-line {
+    margin: 0;
+    max-width: 40ch;
+    font-size: 0.94rem;
+    line-height: 1.55;
+    color: var(--lp-text-muted);
+}
+
+/* ── The word fields. Below the pin breakpoint they are a plain wrapped
+      flow; the composed drift is desktop geometry (see the media block). ── */
+.landing-modes__field {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+/* Third tier: a word behind a hairline leader, no container at all. The lead
+   words take the container, and that difference IS the hierarchy: ten equal
+   chips would read as a tag cloud, which is the one thing this field must not
+   be. The leader is a rule, not a dot, so it belongs to the same drawn
+   vocabulary as the seat scale above it. */
+.landing-modes__word {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.2rem 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--lp-text-muted);
+}
+
+.landing-modes__word::before {
+    content: "";
+    width: 11px;
+    height: 1px;
+    flex: none;
+    background: hsla(268, 14%, 84%, 0.45);
+}
+
+/* Second tier: the shape's headline capabilities, held in a hairline pill. */
+.landing-modes__word--lead {
+    padding: 0.36rem 0.72rem;
+    border: 1px solid var(--lp-border);
+    border-radius: 999px;
+    background: hsla(268, 16%, 14%, 0.7);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    color: var(--lp-text);
+}
+
+.landing-modes__word--lead::before { display: none; }
+
+/* Iris marks what the workspace adds: a tinted wash and a hairline, never a
+   thickened edge (the category-colour rule). */
+.landing-modes__bank--work .landing-modes__word {
+    color: color-mix(in srgb, var(--lp-primary-soft) 40%, var(--lp-text-muted));
+}
+
+.landing-modes__bank--work .landing-modes__word::before {
+    background: hsla(268, 62%, 64%, 0.7);
+}
+
+.landing-modes__bank--work .landing-modes__word--lead {
+    border-color: hsla(268, 52%, 60%, 0.36);
+    background: color-mix(in srgb, var(--lp-primary) 15%, hsla(268, 16%, 13%, 0.72));
+    color: color-mix(in srgb, var(--lp-primary-soft) 26%, var(--lp-text));
+    box-shadow: 0 0 22px hsla(268, 62%, 58%, 0.1);
+}
+
 /* ═══ Scene 7 · PROOF (T2 pin + T15/T17 overture) ═══════════════════
    Base: a static composed stage. Desktop + .has-motion: 240vh runway,
    sticky stage, dawn and stats scrubbed by --p, counters from the engine. */
@@ -2897,14 +3740,11 @@
     color: var(--lp-text-muted);
 }
 
-/* ═══ Scene 8 · PRICING ═══
-   Four self-serve cards mirroring the in-app plan picker, plus a quiet
-   sales-led Enterprise band: counts follow the catalog, not a template. */
-.landing-pricing {
-    padding: 8rem 24px;
-    background: var(--lp-bg-deep);
-}
-
+/* ═══ Shared section vocabulary ═══
+   The in-flow (non-runway) scenes share this inner box and its heading pair.
+   In Alectrone.Calendar.Web the pricing scene owns them too; in the demo only
+   the close scene does, so the subtitle rule is currently unused. It is kept
+   because it belongs to the shared vocabulary, not to pricing. */
 .landing__section-inner {
     max-width: var(--lp-max-width);
     margin: 0 auto;
@@ -2927,163 +3767,6 @@
     color: var(--lp-text-muted);
     max-width: 560px;
     margin: 0 auto 56px;
-}
-
-.landing__price-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 20px;
-    align-items: start;
-    margin: 0 auto;
-}
-
-.landing__price-card {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    padding: 28px 24px;
-    border-radius: var(--lp-radius-lg);
-    border: 1px solid var(--lp-border);
-    background: var(--lp-bg-card);
-    transition: border-color var(--lp-motion-base) ease, background var(--lp-motion-base) ease,
-                transform var(--lp-motion-scene) var(--lp-ease-enter), opacity var(--lp-motion-scene) ease,
-                box-shadow var(--lp-motion-base) ease, filter var(--lp-motion-base) ease;
-}
-
-/* Hover reads as lit, not repainted (T17: light over alpha). */
-.landing__price-card:hover {
-    border-color: hsla(268, 50%, 50%, 0.3);
-    background: var(--lp-bg-card-hover);
-    filter: brightness(1.05);
-    box-shadow: 0 10px 36px hsla(268, 40%, 10%, 0.35);
-}
-
-.landing__price-card--featured {
-    border-color: hsla(268, 62%, 58%, 0.5);
-    background:
-        linear-gradient(180deg, hsla(268, 62%, 58%, 0.09), transparent 42%),
-        var(--lp-bg-card);
-    box-shadow: 0 12px 48px hsla(268, 60%, 40%, 0.2);
-}
-
-.landing__price-badge {
-    position: absolute;
-    top: -12px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 4px 14px;
-    border-radius: 999px;
-    background: var(--lp-primary);
-    color: #fff;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    white-space: nowrap;
-}
-
-.landing__price-name {
-    font-size: 0.9rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--lp-primary-soft);
-    margin-bottom: 12px;
-}
-
-.landing__price-amount {
-    font-size: 2.3rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1;
-    color: var(--lp-text);
-    margin-bottom: 8px;
-}
-.landing__price-amount--custom {
-    font-size: 2rem;
-}
-.landing__price-currency {
-    font-size: 1.4rem;
-    font-weight: 700;
-    vertical-align: super;
-    margin-right: 2px;
-}
-.landing__price-period {
-    font-size: 0.9rem;
-    font-weight: 500;
-    color: var(--lp-text-muted);
-    letter-spacing: 0;
-}
-
-.landing__price-tagline {
-    font-size: 0.9rem;
-    color: var(--lp-text-muted);
-    margin: 0 0 20px;
-}
-
-.landing__price-features {
-    list-style: none;
-    margin: 0 0 28px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    flex: 1;
-}
-.landing__price-features li {
-    position: relative;
-    padding-left: 24px;
-    font-size: 0.9rem;
-    color: var(--lp-text);
-    line-height: 1.5;
-}
-.landing__price-features li::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0.3em;
-    width: 0.85em;
-    height: 0.85em;
-    background: var(--lp-primary-soft);
-    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
-    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'/%3E%3C/svg%3E") no-repeat center / contain;
-}
-
-/* Enterprise is sales-led (absent from the self-serve catalog by design),
-   so it gets a quiet band, not a fifth card. */
-.landing__price-enterprise {
-    margin-top: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 24px;
-    padding: 22px 28px;
-    border-radius: var(--lp-radius-lg);
-    border: 1px solid var(--lp-border);
-    background: var(--lp-bg-card);
-    transition: border-color var(--lp-motion-base) ease, filter var(--lp-motion-base) ease,
-                transform var(--lp-motion-scene) var(--lp-ease-enter), opacity var(--lp-motion-scene) ease;
-}
-
-.landing__price-enterprise:hover {
-    border-color: hsla(268, 50%, 50%, 0.3);
-    filter: brightness(1.05);
-}
-
-.landing__price-enterprise-copy {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-
-.landing__price-enterprise-copy .landing__price-name {
-    margin-bottom: 2px;
-}
-
-.landing__price-enterprise-copy p {
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--lp-text-muted);
 }
 
 /* ═══ Scene 10 · Close ═══ */
@@ -3174,16 +3857,6 @@
     color: var(--lp-text);
 }
 
-/* Demo build: the third footer column states what this build is instead of
-   linking to account pages that do not exist here. Same metrics as the
-   anchors above so the three columns stay optically identical. */
-.landing__footer-note {
-    display: block;
-    color: var(--lp-text-muted);
-    font-size: 0.88rem;
-    padding: 4px 0;
-}
-
 .landing__footer-bottom {
     padding-top: 24px;
     border-top: 1px solid var(--lp-border);
@@ -3205,12 +3878,11 @@
 .landing.has-motion .landing-views__hint,
 .landing.has-motion .landing-booking__copy,
 .landing.has-motion .landing-booking__card,
-.landing.has-motion .landing-ai__header,
-.landing.has-motion .landing-ai__bar,
-.landing.has-motion .landing-pricing .landing__section-title,
-.landing.has-motion .landing-pricing .landing__section-subtitle,
-.landing.has-motion .landing-pricing .landing__price-card,
-.landing.has-motion .landing-pricing .landing__price-enterprise,
+.landing.has-motion .landing-ai__copy,
+.landing.has-motion .landing-ai__console,
+.landing.has-motion .landing-modes__head,
+.landing.has-motion .landing-modes__rule,
+.landing.has-motion .landing-modes__plate,
 .landing.has-motion .landing-close .landing__section-inner {
     opacity: 0;
     transform: translateY(2rem);
@@ -3229,12 +3901,11 @@
 .landing.has-motion .landing-views.active .landing-views__hint,
 .landing.has-motion .landing-booking.active .landing-booking__copy,
 .landing.has-motion .landing-booking.active .landing-booking__card,
-.landing.has-motion .landing-ai.active .landing-ai__header,
-.landing.has-motion .landing-ai.active .landing-ai__bar,
-.landing.has-motion .landing-pricing.active .landing__section-title,
-.landing.has-motion .landing-pricing.active .landing__section-subtitle,
-.landing.has-motion .landing-pricing.active .landing__price-card,
-.landing.has-motion .landing-pricing.active .landing__price-enterprise,
+.landing.has-motion .landing-ai.active .landing-ai__copy,
+.landing.has-motion .landing-ai.active .landing-ai__console,
+.landing.has-motion .landing-modes.active .landing-modes__head,
+.landing.has-motion .landing-modes.active .landing-modes__rule,
+.landing.has-motion .landing-modes.active .landing-modes__plate,
 .landing.has-motion .landing-close.active .landing__section-inner {
     opacity: 1;
     transform: translateY(0) translateX(0);
@@ -3250,20 +3921,33 @@
 .landing.has-motion .landing-views.active .landing-views__panel:nth-child(7) { transition-delay: 0.52s; }
 .landing.has-motion .landing-views.active .landing-views__hint { transition-delay: 0.6s; }
 
-/* Stagger: header first, then items left to right, the band closing. */
-.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(1) { transition-delay: 0.12s; }
-.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(2) { transition-delay: 0.2s; }
-.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(3) { transition-delay: 0.28s; }
-.landing.has-motion .landing-pricing.active .landing__price-card:nth-child(4) { transition-delay: 0.36s; }
-.landing.has-motion .landing-pricing.active .landing__price-enterprise { transition-delay: 0.46s; }
-
 /* Stagger delays must not lag pointer feedback once a scene is at rest. */
-.landing.has-motion .landing-pricing.active .landing__price-card:hover,
-.landing.has-motion .landing-pricing.active .landing__price-enterprise:hover,
 .landing.has-motion .landing-views.active .landing-views__panel:hover {
     transition-delay: 0s;
 }
 
+
+/* ── Scene 6a: the personal field is lit by the scene's own trip-wire, in
+   reading order. Arrival rides the individual `translate` property so the
+   resting drift keeps `transform` to itself. The workspace field does not
+   appear here: it is scrubbed by the runway (desktop) and composed at rest
+   (everywhere else), because its whole point is that it ARRIVES. ── */
+.landing.has-motion .landing-modes__bank--personal .landing-modes__word {
+    opacity: 0;
+    translate: 0 1.1rem;
+    transition: opacity 0.6s var(--lp-ease-enter), translate 0.6s var(--lp-ease-enter);
+    transition-delay: calc(var(--i) * 0.05s);
+}
+
+.landing.has-motion .landing-modes.active .landing-modes__bank--personal .landing-modes__word {
+    opacity: 1;
+    translate: 0 0;
+}
+
+/* The two plates are read left to right, so the workspace one lands second. */
+.landing.has-motion .landing-modes.active .landing-modes__bank--work .landing-modes__plate {
+    transition-delay: 0.14s;
+}
 
 /* ── T13 departure grammar: scenes that left through the top dim and
    drift up, so the stage is empty before the next act. ── */
@@ -3276,7 +3960,10 @@
     filter: brightness(0.75);
 }
 
-/* ── Booking performance timeline (runs on .active, resets on removal) ── */
+/* ── Booking performance timeline (runs on .active, resets on removal).
+   Compressed: the pinned card now flips to Calendar on scroll, so the Focus
+   booking must "perform" (slots land, one is picked, confirmed) within ~1.4s,
+   before the scrub carries it into the flip. ── */
 .landing.has-motion .landing-booking__slot {
     opacity: 0;
 }
@@ -3285,12 +3972,12 @@
     animation: landing-pop 0.45s var(--lp-ease-spring) both;
 }
 
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(1) { animation-delay: 0.5s; }
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(2) { animation-delay: 0.62s; }
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(3) { animation-delay: 0.74s; }
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(4) { animation-delay: 0.86s; }
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(5) { animation-delay: 0.98s; }
-.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(6) { animation-delay: 1.1s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(1) { animation-delay: 0.06s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(2) { animation-delay: 0.12s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(3) { animation-delay: 0.18s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(4) { animation-delay: 0.24s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(5) { animation-delay: 0.3s; }
+.landing.has-motion .landing-booking.active .landing-booking__slot:nth-child(6) { animation-delay: 0.36s; }
 
 /* Pre-pick pose: the picked slot looks like its neighbors until the
    performance picks it. */
@@ -3303,8 +3990,8 @@
 
 .landing.has-motion .landing-booking.active .landing-booking__slot--picked {
     animation:
-        landing-pop 0.45s var(--lp-ease-spring) 0.62s both,
-        landing-slot-pick 0.5s ease 1.75s both;
+        landing-pop 0.45s var(--lp-ease-spring) 0.12s both,
+        landing-slot-pick 0.5s ease 0.62s both;
 }
 
 .landing.has-motion .landing-booking__toast {
@@ -3312,56 +3999,28 @@
 }
 
 .landing.has-motion .landing-booking.active .landing-booking__toast {
-    animation: landing-toast-in 0.55s var(--lp-ease-enter) 2.35s both;
+    animation: landing-toast-in 0.55s var(--lp-ease-enter) 0.9s both;
 }
 
-/* ── AI performance timeline ── */
+/* ── AI: the caret is the one thing on this scene that keeps its own
+   clock. Everything else is scrubbed from the runway, so the console has
+   no pulse of its own until the visitor gives it one; a blinking caret is
+   what makes the bar read as waiting for a sentence rather than frozen.
+   (Reduced motion stills it through the global block at the foot of the
+   sheet, and the base sheet never arms it at all.) ── */
 .landing.has-motion .landing-ai__type {
-    max-width: 0;
     animation: landing-caret 0.9s steps(1) infinite;
-}
-
-.landing.has-motion .landing-ai.active .landing-ai__type {
-    animation:
-        landing-type 1.4s steps(32, end) 0.7s both,
-        landing-caret 0.9s steps(1) infinite;
-}
-
-.landing.has-motion .landing-ai__strip {
-    opacity: 0;
-    transform: translateY(1.25rem);
-    transition: opacity 0.6s var(--lp-ease-enter) 0.3s, transform 0.6s var(--lp-ease-enter) 0.3s;
-}
-
-.landing.has-motion .landing-ai.active .landing-ai__strip {
-    opacity: 1;
-    transform: translateY(0);
-}
-
-.landing.has-motion .landing-ai__day--hit {
-    border-color: var(--lp-border);
-    box-shadow: none;
-}
-
-.landing.has-motion .landing-ai.active .landing-ai__day--hit {
-    animation: landing-day-hit 0.6s ease 2.25s both;
-}
-
-.landing.has-motion .landing-ai__chip {
-    opacity: 0;
-}
-
-.landing.has-motion .landing-ai.active .landing-ai__chip {
-    animation: landing-chip-pop 0.55s var(--lp-ease-spring) 2.4s both;
 }
 
 /* ═══ Desktop-only pin and pose geometry (T2/T12: pins and wheel-count
    assumptions make no sense under touch momentum scrolling) ═══ */
 @media (min-width: 961px) {
-    /* ── Hero runway: 220vh; the stage pins while the overture plays
-       (growth, fill, hold, handoff, departure), then releases. ── */
+    /* ── Hero runway: 260vh; the stage pins while the overture plays
+       (growth, fill, then a longer HELD pose after the text lands, handoff,
+       departure), then releases. The extra 40vh over the old 220vh is the
+       held beat: the text rests in place before the stage departs. ── */
     .landing.has-motion .landing-hero {
-        height: 220vh;
+        height: 260vh;
     }
 
     .landing.has-motion .landing-hero__stage {
@@ -3541,6 +4200,125 @@
         transform: translateY(0);
     }
 
+    /* ── Booking runway: 150vh. The stage pins while page-scroll scrubs --p
+       through the flip, pauses on Calendar, then releases; the tall section IS
+       the runway (offsetHeight - 100vh = travel).
+
+       Pin length is 50vh, i.e. ONE wheel flick (handbook sizing rule: pin
+       length = a whole number of ~500px flicks). This scene has a single beat
+       (Focus -> Calendar), so it gets a single flick: at 1080px tall that is
+       540px of pin, split 0.3 / 0.4 / 0.3 into a hold, the turn, and a hold
+       (see .landing-booking__flip for why the holds get the bigger share).
+
+       It used to be 180vh (864px of pin = 1.7 flicks), which read as one flip
+       with a long stall around it: 518px just to turn the card, with 173px of
+       frozen card at each end. Keep the pin at one flick — length is what made
+       it sluggish; the act split is where the pacing gets tuned. ── */
+    .landing.has-motion .landing-booking {
+        height: 150vh;
+        min-height: 0;
+    }
+
+    .landing.has-motion .landing-booking__pin {
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        min-height: 0;
+    }
+
+    /* ── Booking runway choreography. The pin used to spend its whole length
+       on one turning card with a static column beside it; the column now
+       performs on the same clock, and the card takes the stage once it has
+       turned. Acts across --p 0..1 (540px at 1080 tall):
+
+         0.02 .. 0.30  headline line 1 fills   ("Share one link.")
+         0.05 .. 0.43  the three points light, one after another
+         0.30 .. 0.70  the card turns Focus -> Calendar (existing)
+         0.32 .. 0.60  headline line 2 fills   ("Get booked.") - the sentence
+                       completes as the card comes round to the month
+         0.58 .. 0.86  the card swells and brightens, glow opening wider
+         0.66 .. 0.95  the prose recedes: dimmer, drifting left, out of focus
+                       (the CTA holds its strength - it is not scenery)
+         0.86 .. 1     held on the enlarged Calendar face, then release
+
+       Everything here is scroll-position driven, so scrolling back up plays
+       the same acts in reverse. Nothing is animated on a clock, and nothing
+       is transitioned: a transition on a scrubbed property lags the wheel.
+       It all lives inside this desktop block because --p only moves where the
+       pin exists - off the runway every variable stays at its composed value.
+       ── */
+
+    /* The fill is the hero statement's grammar (see .landing-hero__statement-
+       line): one gradient, scrubbed by background-position, unread text held
+       at low alpha. Reading is the point of a headline, so the unread tone
+       stays legible rather than the hero's near-invisible 0.22. */
+    .landing.has-motion .landing-booking__title-line {
+        background-image: linear-gradient(100deg,
+            hsl(268, 30%, 96%) 0%, hsl(268, 65%, 80%) 30%, var(--lp-primary) 48%,
+            hsla(268, 10%, 92%, 0.42) 52%, hsla(268, 10%, 92%, 0.42) 100%);
+        background-size: 210% 100%;
+        background-clip: text;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        color: transparent;
+        background-position-x: calc(100% * (1 - var(--fill-l)));
+    }
+
+    .landing.has-motion .landing-booking__title-line--1 {
+        --fill-l: clamp(0, calc((var(--p) - 0.02) / 0.28), 1);
+    }
+
+    .landing.has-motion .landing-booking__title-line--2 {
+        --fill-l: clamp(0, calc((var(--p) - 0.32) / 0.28), 1);
+    }
+
+    /* Each point owns a 0.12-wide window opening as the one before it closes,
+       so the three read as a cascade rather than three separate events. All
+       lit by 0.43: the column finishes speaking early in the turn and is fully
+       readable for the whole second half of the runway, where the card is the
+       thing being watched. */
+    .landing.has-motion .landing-booking__points li {
+        --lit: clamp(0, calc((var(--p) - (0.05 + var(--i) * 0.13)) / 0.12), 1);
+        opacity: calc((0.34 + var(--lit) * 0.66) * (1 - var(--recede) * 0.42));
+        translate: calc((1 - var(--lit)) * -0.55rem) 0;
+    }
+
+    /* The check strikes in with the line it belongs to. */
+    .landing.has-motion .landing-booking__points li::before {
+        transform: scale(calc(0.5 + var(--lit) * 0.5));
+        opacity: var(--lit);
+    }
+
+    /* Focus pull: the column steps back as the card grows into the stage. The
+       drift rides the individual `translate` property because `transform` is
+       already owned by the trip-wire entrance and carries a 0.7s transition -
+       scrubbing that would rubber-band against the wheel. The column's own
+       `opacity` is spoken for by the same entrance, so the fade is applied to
+       its CHILDREN, which is the better instrument anyway: prose recedes, the
+       call to action does not. A dimmed button reads as a disabled one. */
+    .landing.has-motion .landing-booking__copy {
+        --recede: clamp(0, calc((var(--p) - 0.66) / 0.29), 1);
+        translate: calc(var(--recede) * -0.8rem) 0;
+    }
+
+    .landing.has-motion .landing-booking__copy .landing-eyebrow,
+    .landing.has-motion .landing-booking__title,
+    .landing.has-motion .landing-booking__desc {
+        opacity: calc(1 - var(--recede) * 0.42);
+    }
+
+    /* The swell. Multiplies the --vp spotlight pose rather than replacing it,
+       so the card is still bigger at viewport centre and bigger again once it
+       has turned; the leftward drift moves it toward the middle of the stage
+       it has just taken. */
+    .landing.has-motion .landing-booking__stagebox {
+        --swell: clamp(0, calc((var(--p) - 0.58) / 0.28), 1);
+        transform:
+            translateX(calc(var(--swell) * -1.25rem))
+            scale(calc((0.97 + var(--peak) * 0.05) * (1 + var(--swell) * 0.13)));
+        filter: brightness(calc(0.94 + var(--peak) * 0.14 + var(--swell) * 0.07));
+    }
+
     /* ── Colorways runway: 380vh; the theater pins while scroll walks the
        seven rainbow acts (equal commit bands with dead zones, generalized
        in the engine). ── */
@@ -3556,6 +4334,118 @@
         justify-content: center;
         padding: 1.5rem 24px;
         gap: 1.75rem;
+    }
+
+    /* ── Shapes runway: 220vh. The stage pins while the reader travels the
+       seat rule from one seat to the ceiling, and the workspace field
+       arrives word by word behind it. The personal field does not scrub:
+       it is lit by the scene's own trip-wire, because a personal account
+       already carries those capabilities before anything is added. ── */
+    .landing.has-motion .landing-modes {
+        --p: 0;
+        height: 220vh;
+    }
+
+    .landing.has-motion .landing-modes__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding: 2.5rem 24px;
+    }
+
+    .landing.has-motion .landing-modes__head { margin-bottom: 2.5rem; }
+    .landing.has-motion .landing-modes__rule { margin-bottom: 2.25rem; }
+
+    /* The pool of light comes up with the span it sits under. */
+    .landing.has-motion .landing-modes__dawn {
+        opacity: calc(0.18 + var(--p) * 0.82);
+        transform: translateY(calc((1 - var(--p)) * 18%));
+    }
+
+    /* One travel value drives the whole instrument: the reader's position and
+       the span's fill are the same number, so the lit length always ends
+       exactly under the reader. Hold at each end (0.14 in, 0.74 out) so the
+       measure is readable before it moves and after it lands. */
+    .landing.has-motion .landing-modes__rule {
+        --travel: clamp(0, (var(--p) - 0.14) / 0.6, 1);
+    }
+
+    .landing.has-motion .landing-modes__rule-span {
+        transform: scaleX(var(--travel));
+    }
+
+    .landing.has-motion .landing-modes__reader {
+        left: calc(var(--travel) * 100%);
+        opacity: clamp(0, var(--p) * 12, 1);
+    }
+
+    /* The workspace field lands in reading order behind the reader: each word
+       opens over its own 0.06 of the runway, 0.05 after the one before it, so
+       the tenth completes at 0.72, just as the reader reaches the ceiling.
+       Arrival uses the individual `translate` property, leaving `transform`
+       free for the resting drift below. */
+    .landing.has-motion .landing-modes__bank--work .landing-modes__word {
+        --wp: clamp(0, (var(--p) - 0.16 - var(--i) * 0.05) / 0.06, 1);
+        opacity: var(--wp);
+        translate: 0 calc((1 - var(--wp)) * 0.8rem);
+    }
+
+    /* ── The composed word fields. Off the pin the words are a wrapped flow;
+       here they take their hand-placed positions in a fixed field box and
+       hold a barely-there drift, so the field reads as suspended rather than
+       pasted flat. Two lanes per field, alternating, with a few percent of
+       row offset between the pair: placed, not scattered. ── */
+    .landing.has-motion .landing-modes__field {
+        position: relative;
+        display: block;
+        height: 16rem;
+        margin-top: 1.35rem;
+    }
+
+    .landing.has-motion .landing-modes__word {
+        position: absolute;
+        left: calc(var(--x) * 1%);
+        top: calc(var(--y) * 1%);
+        animation: landing-modes-drift 11s ease-in-out infinite;
+        animation-delay: calc(var(--i) * -1.3s);
+    }
+
+    /* ── AI runway: 280vh, the same height family as its neighbours (the
+       scene used to be a short in-flow band between two pinned ones, which
+       is why it read as a hole in the page). 180vh of travel is about four
+       wheel flicks, and the acts below spend them like this:
+
+         0.00 - 0.12   HOLD   the console arrives and rests, empty
+         0.12 - 0.34   TYPE   the sentence writes itself
+         0.34 - 0.50   PARSE  it resolves into the four event fields
+         0.38 - 0.56   ROUTE  the chain answers (overlaps PARSE on purpose:
+                              the request is out while the fields settle)
+         0.52 - 0.76   SCAN   the read crosses the week, day by day
+         0.76 - 0.88   LAND   the event drops into the hour it named
+         0.88 - 1.00   HOLD   the finished pose rests before release
+
+       The two holds are the slight stops the pin buys: a quarter of the
+       runway where scrolling moves the page but not the scene, so the
+       visitor arrives on a composed stage and leaves from one instead of
+       catching the performance mid-stride at either edge. ── */
+    .landing.has-motion .landing-ai {
+        --p: 0;
+        height: 280vh;
+        --type:  clamp(0, (var(--p) - 0.12) / 0.22, 1);
+        --parse: clamp(0, (var(--p) - 0.34) / 0.16, 1);
+        --route: clamp(0, (var(--p) - 0.38) / 0.18, 1);
+        --scan:  clamp(0, (var(--p) - 0.52) / 0.24, 1);
+        --land:  clamp(0, (var(--p) - 0.76) / 0.12, 1);
+    }
+
+    .landing.has-motion .landing-ai__stage {
+        position: sticky;
+        top: var(--lp-header-h);
+        height: calc(100vh - var(--lp-header-h));
+        padding: 2rem 24px;
     }
 
     /* ── Proof runway: 240vh ── */
@@ -3594,11 +4484,6 @@
 /* Rail is a desktop instrument. */
 @media (max-width: 1120px) {
     .landing-rail { display: none; }
-
-    .landing__price-grid {
-        grid-template-columns: repeat(2, 1fr);
-        max-width: 700px;
-    }
 }
 
 /* ── Responsive ── */
@@ -3632,6 +4517,33 @@
     .landing-booking__grid {
         grid-template-columns: 1fr;
         gap: 40px;
+    }
+
+    /* Off the pin (the runway is desktop-only, like every other scene's) there
+       is no scrub, and the engine publishes --p 1 for a zero-travel runway. So
+       compose the Focus pose explicitly: the flip is a scroll affordance, and
+       without a runway the scene's story is the booking itself (slots land, one
+       is picked, confirmed) — the same pose reduced motion falls back to. */
+    .landing-booking__flip,
+    .landing-booking__switch-thumb {
+        transform: none;
+    }
+
+    /* Off the pin the two shapes stack, so they read as a sequence (what you
+       have, then what a workspace adds) instead of two cramped columns. */
+    .landing-modes__stage { padding: 4.5rem 24px; }
+
+    .landing-modes__head {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+        margin-bottom: 2.5rem;
+    }
+
+    .landing-modes__desc { padding-bottom: 0; }
+
+    .landing-modes__banks {
+        grid-template-columns: 1fr;
+        gap: 2.75rem;
     }
 }
 
@@ -3702,18 +4614,6 @@
         pointer-events: auto;
     }
 
-    .landing__price-grid {
-        grid-template-columns: 1fr;
-        max-width: 420px;
-    }
-
-    .landing__price-enterprise {
-        flex-direction: column;
-        align-items: flex-start;
-        max-width: 420px;
-        margin-left: auto;
-        margin-right: auto;
-    }
 
     .landing-cw__body { grid-template-columns: 1fr; }
 
@@ -3738,8 +4638,19 @@
 
     .landing-proof__billboard { font-size: 9rem; }
 
-    .landing-ai__strip { grid-template-columns: repeat(5, 1fr); gap: 6px; }
-    .landing-ai__day { min-height: 6rem; }
+    /* Off the pin the AI scene is a plain stacked section: copy, then the
+       console showing the finished result. The act variables stay at their
+       base 1, so there is no half-played state to catch here. */
+    .landing-ai__stage { padding: 4.5rem 24px; }
+
+    .landing-ai__inner {
+        grid-template-columns: 1fr;
+        gap: 2.75rem;
+    }
+
+    .landing-ai__chain { width: min(19rem, 100%); }
+    .landing-ai__week { height: clamp(15rem, 46vw, 20rem); }
+    .landing-ai__fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
     .landing__footer-links {
         grid-template-columns: 1fr;
@@ -3818,6 +4729,19 @@
     0%, 100% { transform: scale(0.6);  opacity: 0.42; filter: blur(1.2px) brightness(0.82); }
     50%      { transform: scale(1.17); opacity: 1;    filter: blur(0)     brightness(1.16); }
 }
+/* Today rides the same depth, on a floor: it still swells to the near edge and
+   settles back, but it never dims below legibility and never blurs, so it is the
+   clearest seat on the wheel at every point of the revolution. */
+@keyframes landing-hsun-depth-on {
+    0%, 100% { transform: scale(0.94); opacity: 0.9; filter: blur(0) brightness(1); }
+    50%      { transform: scale(1.34); opacity: 1;   filter: blur(0) brightness(1.18); }
+}
+/* The tether tracks its seat: faint while today is on the far side, bright as it
+   comes around to the near edge. */
+@keyframes landing-hsun-tether {
+    0%, 100% { opacity: 0.26; }
+    50%      { opacity: 0.95; }
+}
 @keyframes landing-hsun-corona {
     0%, 100% { transform: scale(1);    opacity: 0.85; }
     50%      { transform: scale(1.06); opacity: 1; }
@@ -3834,9 +4758,11 @@
     0%, 100% { opacity: 0.4; }
     50%      { opacity: 0.7; }
 }
+/* Today's halo breathes; the datum dot inside it does not move. Low amplitude on
+   purpose: it is a slow "now" that catches peripheral vision, not a ping. */
 @keyframes landing-hsun-todaypulse {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.22); }
+    0%, 100% { transform: scale(1);    opacity: 0.55; }
+    50%      { transform: scale(1.13); opacity: 0.95; }
 }
 
 @keyframes landing-pop {
@@ -3867,30 +4793,11 @@
     to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes landing-type {
-    from { max-width: 0; }
-    to   { max-width: 34ch; }
-}
-
+/* The typing itself is scrubbed from the AI runway, so only the caret is
+   timed: it blinks while the bar waits for a sentence. */
 @keyframes landing-caret {
     0%, 100% { border-right-color: hsl(268, 62%, 68%); }
     50%      { border-right-color: transparent; }
-}
-
-@keyframes landing-day-hit {
-    from {
-        border-color: hsl(268, 16%, 18%);
-        box-shadow: none;
-    }
-    to {
-        border-color: hsla(268, 62%, 68%, 0.55);
-        box-shadow: 0 0 26px hsla(268, 62%, 58%, 0.22);
-    }
-}
-
-@keyframes landing-chip-pop {
-    from { opacity: 0; transform: scale(0.5) translateY(0.4rem); }
-    to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 
 /* The schedule demo's ambient colorway cycle: a fast, vivid trip around
@@ -4015,6 +4922,14 @@
     100%     { box-shadow: 0 30px 80px hsla(268, 40%, 3%, 0.6), 0 0 96px color-mix(in srgb, var(--cw-accent) 36%, transparent); }
 }
 
+/* Suspension, not decoration: a 3px drift over eleven seconds, each word on
+   its own phase. It carries no information, so it stays under the threshold
+   where the eye tracks it, and reduced motion drops it entirely. */
+@keyframes landing-modes-drift {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50%      { transform: translate3d(1px, -3px, 0); }
+}
+
 /* ═══ Reduced motion: final poses, no pinning, no animation (handbook §7).
    The engine also adds .is-reduced and never arms a scene, but this block
    holds even if the engine misbehaves. ═══ */
@@ -4027,7 +4942,7 @@
     }
 
     .landing-hero__e1, .landing-hero__e2, .landing-hero__e2b, .landing-hero__e3,
-    .landing-hero__e4, .landing-hero__e5,
+    .landing-hero__e4, .landing-hero__e4b, .landing-hero__e5,
     .landing-aurora::before,
     .landing-hero__gridsheet {
         opacity: 1;
@@ -4035,8 +4950,20 @@
 
     .landing-booking__stagebox { --vp: 0.5 !important; }
     .landing-cw { --p: 1 !important; height: auto !important; }
+    .landing-ai { --p: 1 !important; height: auto !important; }
+    .landing-ai__stage { position: static !important; height: auto !important; }
     .landing-proof { --p: 1 !important; height: auto !important; }
     .landing-week { --p: 1 !important; height: auto !important; }
+    .landing-modes { --p: 1 !important; height: auto !important; }
     .landing-hero { --exit: 0 !important; height: auto !important; }
-    .landing-pricing { --p: 1 !important; height: auto !important; }
+}
+
+/* ═══ Demo-only ═══════════════════════════════════════════════════════════
+   .landing__footer-note is markup this demo adds: the "About this build"
+   column states facts instead of linking to routes that do not exist here. */
+.landing__footer-note {
+    display: block;
+    color: var(--lp-text-muted);
+    font-size: 0.88rem;
+    padding: 4px 0;
 }

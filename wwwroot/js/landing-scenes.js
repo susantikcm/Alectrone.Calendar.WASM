@@ -18,6 +18,9 @@
 //                    backdrop at different speeds.
 //   T18 rail       : the chapter spine tracks the section at mid-viewport
 //                    and appears only after the hero (both with hysteresis).
+//   T25 autoplay   : a runway that takes the stage plays itself at its own
+//                    tempo while the visitor is idle, by advancing the PAGE
+//                    (never a private timeline: see the block above autoTick).
 //   T1  parallax   : pointer parallax on depth-graded hero layers, gated
 //                    until the entrance choreography has finished.
 //   nav            : the mobile nav toggle flips .nav-open on the root
@@ -74,6 +77,165 @@ function resetCounters(scope) {
     });
 }
 
+// ── T25 runway autoplay ─────────────────────────────────────────────────────
+// Every runway on this page is scroll-SCRUBBED: --p is a function of where the
+// document sits (see the pins/poses loops below). That is what makes the
+// visitor's scroll speed the animation speed and what makes every act play in
+// reverse on the way back up, and the stylesheet says so in as many words
+// ("Nothing is animated on a clock").
+//
+// So autoplay moves the PAGE, not a private timeline. A clock-driven --p would
+// have to be reconciled with scroll position on every frame, would strand the
+// visitor in a finished scene with a tall dead runway under it, and would need
+// its own reverse path for the film strip's scrollLeft and the colorway act
+// bands. Advancing the document instead means autoplay and the wheel write the
+// same number and never disagree.
+//
+//   arm     : on arrival, once the hero's entrance choreography has finished
+//             (AUTO_ARM_MS). The hero is where the visitor lands, so it is the
+//             one scene that would never play if autoplay waited to be asked.
+//             The entrance delay is what keeps the page still while the
+//             overture composes itself; after that the film runs, and any
+//             input stops it instantly.
+//   yield   : real INPUT hands scroll back, not scroll events - we generate
+//             those ourselves. Wheel, touch and keys stand autoplay down for
+//             AUTO_IDLE_MS; a click yields without arming; a deliberate choice
+//             (a colorway swatch) holds it longer.
+//   direct  : reading back up is never overridden. A chapter jump counts as
+//             forward for a moment after it lands, because asking for a
+//             chapter is asking to see it.
+//   pace    : brisk across the gap between scenes, easing down as the next
+//             stage arrives, then the scene's own tempo (data-autoplay ms) on
+//             its runway. A beat of rest on the finished pose before moving on.
+//   stop    : at the last runway, when the tab is hidden or the window blurs,
+//             and the moment the document refuses to move.
+// It never calls preventDefault and never touches scroll-behavior, so on any
+// frame with recent input autoplay adds exactly nothing: a wheel notch is
+// never fought. Opt out with ?autoplay=off (the E2E harness does) or
+// data-autoplay="off" on the root or on a single section.
+
+const AUTO_DEFAULT_MS = 5000; // a runway that declares no tempo of its own
+const AUTO_ARM_MS = 1900;     // arrival grace: the hero's entrance plays first
+const AUTO_IDLE_MS = 700;     // hand-back after the visitor's last input
+const AUTO_HOLD_MS = 4000;    // longer hand-back after a deliberate choice
+const AUTO_JUMP_MS = 1400;    // let a smooth chapter jump land before playing
+const AUTO_GAP_MS = 800;      // pace across a viewport of scene transition
+const AUTO_REST_MS = 700;     // beat of rest on the finished pose
+const AUTO_RAMP_MS = 300;     // the rate eases in, so take-off is not a jolt
+const AUTO_END = 0.995;
+
+function autoStop() {
+    if (!ctx || !ctx.auto || !ctx.auto.raf) return;
+    cancelAnimationFrame(ctx.auto.raf);
+    ctx.auto.raf = 0;
+}
+
+function autoStart() {
+    if (!ctx || !ctx.auto || ctx.auto.raf || !ctx.auto.armed || document.hidden) return;
+    ctx.auto.last = 0;
+    ctx.auto.raf = requestAnimationFrame(autoTick);
+}
+
+// Stand autoplay down for `ms`. Scroll-capable input also ARMS it: nothing on
+// this page ever moves before the visitor has moved it first.
+function autoYield(ms, arm) {
+    if (!ctx || !ctx.auto) return;
+    ctx.auto.idleUntil = performance.now() + ms;
+    ctx.auto.carry = 0;
+    if (arm) { ctx.auto.armed = true; autoStart(); }
+}
+
+// A rail / nav jump: hold while the smooth scroll lands, then treat the
+// arrival as forward travel even if the jump went up the page.
+function autoJump() {
+    if (!ctx || !ctx.auto) return;
+    const now = performance.now();
+    ctx.auto.idleUntil = now + AUTO_JUMP_MS;
+    ctx.auto.forwardUntil = now + AUTO_JUMP_MS + 1200;
+    ctx.auto.carry = 0;
+    ctx.auto.armed = true;
+    autoStart();
+}
+
+function autoTick(now) {
+    if (!ctx || !ctx.auto) return;
+    const a = ctx.auto;
+    a.raf = requestAnimationFrame(autoTick);
+
+    // A long frame or a tab switch must never teleport the page.
+    const dt = a.last ? Math.min(now - a.last, 64) : 0;
+    a.last = now;
+    if (!dt) return;
+
+    if (now < a.idleUntil) { a.runway = null; return; }
+    if (a.dir < 0 && now > a.forwardUntil) { a.runway = null; return; }
+
+    const vh = window.innerHeight;
+    let stage = null;
+    for (const r of a.runways) {
+        const travel = r.el.offsetHeight - vh;
+        if (travel <= 0) continue;              // collapsed: mobile keeps its trip-wires
+        const box = r.el.getBoundingClientRect();
+        // The next runway's top sits EXACTLY on the viewport bottom the moment
+        // the one before it finishes (adjacent sections, stage height = vh), so
+        // the in-play window reaches past the fold by more than the residue
+        // AUTO_END can leave behind (a few px on the longest runway). Without
+        // that slack autoplay stalls at every scene boundary and the visitor
+        // has to nudge the page to start each film, which is the thing it
+        // exists to stop. Out of play is also where a played runway re-arms.
+        if (box.bottom < 0 || box.top > vh + 120) {
+            a.done.delete(r.el);
+            continue;
+        }
+        if (clamp(-box.top / travel, 0, 1) >= AUTO_END) {
+            // Played out, by us or by them. Only OUR completion earns the rest
+            // beat; a visitor who scrolled it through is already moving on.
+            if (!a.done.has(r.el)) {
+                a.done.add(r.el);
+                if (a.runway === r.el) { a.restUntil = now + AUTO_REST_MS; a.runway = null; }
+            }
+            continue;
+        }
+        if (a.done.has(r.el)) continue;
+        stage = r;
+        stage.travel = travel;
+        stage.top = box.top;
+        break;
+    }
+
+    if (!stage) { a.runway = null; return; }
+    if (now < a.restUntil) return;
+
+    if (a.runway !== stage.el) { a.runway = stage.el; a.since = now; a.carry = 0; }
+
+    // Page snapping and a two-pixel advance cannot coexist (see app.css): stand
+    // it down before the first step, not after it has eaten one.
+    ctx.root.classList.add('autoplaying');
+
+    // Approach: a viewport-wide gap crossed briskly, decelerating into the pin
+    // so the handover to the scene's own tempo is a settle, not a jerk.
+    // On the runway: travel / tempo, which is the whole point of the exercise.
+    const rate = stage.top > 0
+        ? (vh / AUTO_GAP_MS) * (0.3 + 0.7 * clamp(stage.top / vh, 0, 1))
+        : stage.travel / stage.duration;
+
+    a.carry += rate * clamp((now - a.since) / AUTO_RAMP_MS, 0, 1) * dt;
+    const step = Math.trunc(a.carry);
+    if (step < 1) return;                       // hold the fraction for the next frame
+    a.carry -= step;
+
+    const y0 = window.scrollY;
+    window.scrollTo(0, y0 + step);
+    // The document can refuse a step for a frame (a settling scroll, a layout
+    // pass). Only a run of refusals means it has genuinely stopped moving -
+    // the end of the document - and only then does autoplay let this runway go.
+    if (Math.abs(window.scrollY - y0) < 0.5) {
+        if (++a.refused >= 4) { a.done.add(stage.el); a.runway = null; }
+    } else {
+        a.refused = 0;
+    }
+}
+
 // T21 colorway lab: cw-1/cw-2 classes on the section (absence = the iris
 // act). Swatch clicks are wired in BOTH the full-motion and reduced paths
 // (the handbook's click-only variant); scroll commitment happens in the
@@ -94,6 +256,9 @@ function wireColorwayLab(root) {
             state.set(k);
             state.held = k;
             state.heldAt = state.lastAct;
+            // A chosen colorway is a deliberate act; autoplay must not scroll
+            // past it a heartbeat later.
+            autoYield(AUTO_HOLD_MS, false);
         };
         b.addEventListener('click', onClick);
         ctx.listeners.push([b, 'click', onClick]);
@@ -153,6 +318,28 @@ function localizeToday(root) {
         if (nEl) nEl.textContent = String(d.getDate());
         col.classList.toggle('lv-col--today', sameYMD(d, today));
     });
+
+    // Hero orbit: the same week, on the visitor's clock. Each seat takes its own
+    // date and today moves to their day by CLASS ALONE - the "Today" callout is
+    // authored on all seven seats and revealed by CSS - so nothing is inserted,
+    // moved, or removed. The tether that reaches from the dial out to today
+    // swings to the matching seat angle (0deg = top, clockwise, Monday first).
+    const orbit = root.querySelector('[data-hsun-orbit]');
+    if (orbit) {
+        orbit.querySelectorAll('[data-hsun-day]').forEach(seat => {
+            const off = parseInt(seat.getAttribute('data-hsun-day'), 10) || 0;
+            const d = new Date(weekStart);
+            d.setDate(weekStart.getDate() + off);
+            const nEl = seat.querySelector('[data-hsun-date]');
+            if (nEl) nEl.textContent = String(d.getDate());
+            seat.classList.toggle('landing-hsun__day--on', off === mondayBack);
+        });
+        const tether = orbit.querySelector('[data-hsun-tether]');
+        if (tether) {
+            tether.style.setProperty('--a', (mondayBack * (360 / 7)).toFixed(3) + 'deg');
+            tether.style.setProperty('--i', String(mondayBack));
+        }
+    }
 
     // Month grid: Monday-start 6x7 over the current month.
     const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
@@ -280,6 +467,15 @@ export function init(rootId) {
             const vh = window.innerHeight;
             const y = window.scrollY;
 
+            // T25: autoplay reads travel direction from the document itself.
+            // Its own advance is downward, so this only ever stands autoplay
+            // down for a genuine read back up.
+            if (ctx.auto) {
+                const dy = y - ctx.auto.lastY;
+                if (Math.abs(dy) > 0.5) ctx.auto.dir = dy > 0 ? 1 : -1;
+                ctx.auto.lastY = y;
+            }
+
             // T2: pinned scenes. Counter start/reset thresholds are
             // separated (0.55 / 0.08): hysteresis again. A pin that holds a
             // horizontal strip is a film runway: page-scroll progress maps
@@ -296,7 +492,13 @@ export function init(rootId) {
                     const filmStrip = pin.querySelector('[data-hstrip]');
                     if (filmStrip) {
                         const stripMax = filmStrip.scrollWidth - filmStrip.clientWidth;
-                        if (stripMax > 0) filmStrip.scrollLeft = p * stripMax;
+                        // Hold the first view on arrival and the last view before
+                        // release: a dead-zone of HOLD at each end of the runway,
+                        // the strip scrolls through the middle. Mirrors the pinned
+                        // slight-stops on the hero and booking scenes.
+                        const HOLD = 0.15;
+                        const sp = clamp((p - HOLD) / (1 - 2 * HOLD), 0, 1);
+                        if (stripMax > 0) filmStrip.scrollLeft = sp * stripMax;
                     }
                 }
 
@@ -395,6 +597,64 @@ export function init(rootId) {
         });
     };
 
+    // ── T25: arm runway autoplay (built before the first scroll pass, which
+    // reads ctx.auto for the direction tracker) ─────────────────────────
+    const autoOff = root.dataset.autoplay === 'off'
+        || new URLSearchParams(window.location.search).get('autoplay') === 'off';
+    if (!autoOff) {
+        ctx.auto = {
+            raf: 0, armed: false, last: 0, carry: 0, since: 0, refused: 0,
+            idleUntil: 0, forwardUntil: 0, restUntil: 0,
+            dir: 1, lastY: window.scrollY, runway: null, done: new Set(),
+            // Pins, poses AND the hero: the hero is a scrubbed runway too (its
+            // overture rides --exit), so it plays itself like every other
+            // scene. The arming rule is what keeps the page still on arrival,
+            // not this list: nothing moves until the visitor's first scroll.
+            // Its runway ends on the held pose (--exit 0.615, the beat before
+            // the departure); the gap crossing into #schedule plays the
+            // departure itself.
+            runways: Array.from(root.querySelectorAll('[data-pin], [data-pose], [data-hero]'))
+                .filter(el => el.dataset.autoplay !== 'off')
+                .map(el => ({
+                    el,
+                    duration: Math.max(1200,
+                        parseInt(el.dataset.autoplay || '', 10) || AUTO_DEFAULT_MS),
+                })),
+        };
+
+        // Arrival: the film starts itself once the hero's entrance has landed.
+        // Without this the hero - the one scene every visitor sees and the one
+        // they are sitting on when they arrive - would be the only scene that
+        // never plays, because nothing has scrolled yet to arm anything.
+        const armTimer = window.setTimeout(() => {
+            if (!ctx || !ctx.auto) return;
+            ctx.auto.armed = true;
+            autoStart();
+        }, AUTO_ARM_MS);
+        ctx.cleanups.push(() => window.clearTimeout(armTimer));
+
+        // Scroll-capable input arms and yields; a press only yields, so a click
+        // never sets the page moving on its own.
+        const onDrive = () => autoYield(AUTO_IDLE_MS, true);
+        const onPress = () => autoYield(AUTO_IDLE_MS, false);
+        window.addEventListener('wheel', onDrive, { passive: true });
+        window.addEventListener('touchstart', onDrive, { passive: true });
+        window.addEventListener('touchmove', onDrive, { passive: true });
+        window.addEventListener('keydown', onDrive);
+        window.addEventListener('pointerdown', onPress, { passive: true });
+        ctx.listeners.push(
+            [window, 'wheel', onDrive], [window, 'touchstart', onDrive],
+            [window, 'touchmove', onDrive], [window, 'keydown', onDrive],
+            [window, 'pointerdown', onPress]);
+
+        const onVis = () => { if (document.hidden) autoStop(); else autoStart(); };
+        document.addEventListener('visibilitychange', onVis);
+        window.addEventListener('blur', autoStop);
+        window.addEventListener('focus', autoStart);
+        ctx.listeners.push([document, 'visibilitychange', onVis],
+            [window, 'blur', autoStop], [window, 'focus', autoStart]);
+    }
+
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
     ctx.listeners.push([window, 'scroll', onScroll], [window, 'resize', onScroll]);
@@ -404,7 +664,9 @@ export function init(rootId) {
     for (const link of railLinks) {
         const onClick = () => {
             const target = chapters.find(c => c.dataset.chapter === link.dataset.rail);
-            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            if (!target) return;
+            autoJump(); // hold while the smooth scroll lands, then play the chapter
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
         };
         link.addEventListener('click', onClick);
         ctx.listeners.push([link, 'click', onClick]);
@@ -424,6 +686,7 @@ export function init(rootId) {
             if (total <= 0) return; // in flow (mobile / reduced): native anchor
             ev.preventDefault();
             const top = scheduleScene.getBoundingClientRect().top + window.scrollY;
+            autoJump();
             window.scrollTo({ top: top + total * 0.72, behavior: 'smooth' });
         };
         productLink.addEventListener('click', onProduct);
@@ -570,6 +833,7 @@ export function init(rootId) {
 
 export function destroy() {
     if (!ctx) return;
+    autoStop();
     ctx.observers.forEach(o => o.disconnect());
     ctx.listeners.forEach(([target, evt, fn]) => target.removeEventListener(evt, fn));
     ctx.cleanups.forEach(fn => fn());

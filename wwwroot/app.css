@@ -85,6 +85,16 @@ html:has(#calendar-landing.is-reduced) {
     scroll-snap-type: none;
 }
 
+/* Autoplay (T25) advances the document a couple of pixels per frame, and
+   proximity snapping SWALLOWS steps that size, so the film stalls at every
+   scene boundary without this. Once autoplay starts driving, page snapping
+   stands down and stays down for the rest of the visit: re-arming a snap
+   container mid-visit re-snaps to the nearest stop, which would yank the page
+   at the exact moment autoplay hands back to the visitor. */
+html:has(#calendar-landing.autoplaying) {
+    scroll-snap-type: none;
+}
+
 /* ── Boot splash: the plasma mark, breathing, until the runtime is up ── */
 .boot {
     position: fixed;
