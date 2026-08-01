@@ -4571,6 +4571,16 @@
         overflow-x: auto;
     }
 
+    /* Better button sizing for touch on mobile */
+    .landing__btn {
+        min-height: 44px;
+        padding: 10px 20px;
+    }
+
+    .landing__btn--lg {
+        min-height: 48px;
+    }
+
     .landing.has-motion .landing__header-inner {
         flex-wrap: nowrap;
         height: var(--lp-header-h);
@@ -4928,6 +4938,18 @@
 @keyframes landing-modes-drift {
     0%, 100% { transform: translate3d(0, 0, 0); }
     50%      { transform: translate3d(1px, -3px, 0); }
+}
+
+/* 10-second loop animation for autoplay on sections */
+@keyframes section-pulse {
+    0%   { opacity: 1; }
+    45%  { opacity: 1; }
+    50%  { opacity: 1; }
+    100% { opacity: 1; }
+}
+
+.landing > section[data-autoplay] {
+    animation: section-pulse 10s ease-in-out infinite;
 }
 
 /* ═══ Reduced motion: final poses, no pinning, no animation (handbook §7).
